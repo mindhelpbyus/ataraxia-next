@@ -1,0 +1,11 @@
+version = 0.1
+
+[default]
+[default.local]
+[default.local.parameters]
+Environment = "local"
+DynamoDBEndpoint = "http://localhost:8000"
+
+[default.local.start_api]
+port = 3001
+host = "0.0.0.0"

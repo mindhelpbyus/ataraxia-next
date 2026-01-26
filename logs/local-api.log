@@ -1,0 +1,93 @@
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+✅ PostgreSQL database connection successful
+✅ AWS Cognito configuration loaded
+   User Pool: us-west-2_xeXlyFBMH
+   Client ID: 7ek8kg1td2ps985r21m7727q98
+   Region: us-west-2
+
+======================================================================
+  🚀 Ataraxia REAL API Server (Cognito + PostgreSQL)
+======================================================================
+
+  Server running on: http://localhost:3010
+  Environment: REAL Production-Ready
+  Database: PostgreSQL (Connected)
+  Authentication: AWS Cognito (us-west-2_xeXlyFBMH)
+
+  🔐 REAL Auth Endpoints:
+    POST   /api/auth/login             - Real Cognito Login
+    POST   /api/auth/register          - Real Cognito Registration
+    GET    /api/auth/me               - Real User Profile
+    POST   /api/auth/logout           - Logout
+    POST   /api/auth/forgot-password  - Real Password Reset
+    POST   /api/auth/phone/send-code  - SMS Verification
+    POST   /api/auth/phone/verify-code - SMS Code Verification
+    POST   /api/auth/google           - Google OAuth
+    POST   /api/auth/therapist/register - Complete Therapist Registration
+
+  👨‍⚕️ MODERN Therapist Service (PostgreSQL + Cognito):
+    GET    /api/therapist             - Get All Therapists (with filters)
+    GET    /api/therapist/:id         - Get Therapist Details
+    PUT    /api/therapist/:id         - Update Therapist Profile
+    GET    /api/therapist/:id/availability - Get Availability
+    PUT    /api/therapist/:id/availability - Update Availability
+
+  👤 MODERN Client Service (PostgreSQL + Cognito):
+    GET    /api/client                - Get All Clients (with filters)
+    GET    /api/client/:id            - Get Client Details
+    PUT    /api/client/:id            - Update Client Profile
+    POST   /api/client/:id/assign     - Assign Therapist to Client
+
+  🏥 System Endpoints:
+    GET    /health                    - Health check
+
+======================================================================
+
+  💡 Frontend Configuration:
+     Update your frontend .env.local:
+     VITE_API_BASE_URL=http://localhost:3010
+
+  🎉 NO MORE MOCK DATA - This is the REAL system!
+
+======================================================================
+
+[2026-01-26T17:51:54.082Z] GET /health
+[2026-01-26T17:51:54.120Z] GET /health
+[2026-01-26T17:51:54.157Z] GET /api/auth/me
+[2026-01-26T17:51:54.166Z] GET /api/therapist
+📊 Found 3 therapists (3 total)
+[2026-01-26T17:51:54.282Z] GET /api/client
+📊 Found 0 clients (0 total)
+[2026-01-26T17:51:54.401Z] POST /api/auth/login
+  Body: {
+  "email": "test@example.com",
+  "password": "test123"
+}
+🔐 REAL Cognito login attempt: { email: 'test@example.com', password: '***' }
+❌ Login error: NotAuthorizedException: Incorrect username or password.
+    at AwsJson1_1Protocol.handleError (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:813:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async AwsJson1_1Protocol.deserializeResponse (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:481:13)
+    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:26:24
+    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/index.js:121:20
+    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/middleware-retry/dist-cjs/index.js:254:46
+    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@aws-sdk/middleware-logger/dist-cjs/index.js:5:26
+    at async /Users/cvp/anti-gravity/Ataraxia-Next/local-api-server.js:137:29 {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'a58b347a-4f9a-43a2-89b7-2bf80c27bdee',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'NotAuthorizedException'
+}
+[2026-01-26T17:52:03.987Z] GET /health
+[2026-01-26T17:52:13.450Z] GET /api-explorer
+[2026-01-26T17:52:20.887Z] GET /health
+[2026-01-26T17:53:08.544Z] GET /api-explorer
+[2026-01-26T17:53:08.568Z] GET /health
+[2026-01-26T17:53:08.619Z] GET /favicon.ico

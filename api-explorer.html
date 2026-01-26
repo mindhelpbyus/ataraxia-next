@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ataraxia-Next API Explorer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .status-bar {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #28a745;
+        }
+
+        .status-dot.error {
+            background: #dc3545;
+        }
+
+        .auth-section {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .auth-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .token-display {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .token-display input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #1e7e34;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .main-content {
+            display: flex;
+            min-height: 600px;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .endpoint-group {
+            margin-bottom: 25px;
+        }
+
+        .endpoint-group h3 {
+            color: #495057;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+        }
+
+        .endpoint-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .endpoint-item:hover {
+            background: #e9ecef;
+        }
+
+        .endpoint-item.active {
+            background: #007bff;
+            color: white;
+        }
+
+        .method-badge {
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-right: 10px;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .method-get { background: #28a745; color: white; }
+        .method-post { background: #007bff; color: white; }
+        .method-put { background: #ffc107; color: black; }
+        .method-delete { background: #dc3545; color: white; }
+
+        .content-area {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .endpoint-details {
+            display: none;
+        }
+
+        .endpoint-details.active {
+            display: block;
+        }
+
+        .endpoint-title {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+            color: #495057;
+        }
+
+        .endpoint-description {
+            color: #6c757d;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            min-height: 120px;
+            font-family: monospace;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .response-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+
+        .response-section h4 {
+            margin-bottom: 15px;
+            color: #495057;
+        }
+
+        .response-content {
+            background: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #e9ecef;
+            font-family: monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .response-success {
+            border-left-color: #28a745;
+        }
+
+        .response-error {
+            border-left-color: #dc3545;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .quick-auth {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .quick-auth h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .quick-auth-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        .json-editor {
+            position: relative;
+        }
+
+        .json-format-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            padding: 2px 6px;
+            font-size: 10px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #e9ecef;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            border-bottom-color: #007bff;
+            color: #007bff;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                max-height: 300px;
+            }
+            
+            .auth-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .form-row {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Ataraxia-Next API Explorer</h1>
+            <p>Interactive API testing interface with real Cognito authentication and PostgreSQL database</p>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-dot" id="api-status"></div>
+                <span>API Server: <span id="api-status-text">Checking...</span></span>
+            </div>
+            <div class="status-item">
+                <div class="status-dot" id="db-status"></div>
+                <span>Database: <span id="db-status-text">Checking...</span></span>
+            </div>
+            <div class="status-item">
+                <div class="status-dot" id="cognito-status"></div>
+                <span>Cognito: <span id="cognito-status-text">Checking...</span></span>
+            </div>
+            <div class="status-item">
+                <span>Base URL: <strong id="base-url">http://localhost:3010</strong></span>
+            </div>
+        </div>
+
+        <div class="auth-section">
+            <div class="auth-controls">
+                <div class="token-display">
+                    <label for="auth-token">Authorization Token:</label>
+                    <input type="text" id="auth-token" placeholder="Bearer token will appear here after login..." readonly>
+                </div>
+                <button class="btn btn-success" onclick="testLogin()">Quick Login</button>
+                <button class="btn btn-primary" onclick="testRegister()">Quick Register</button>
+                <button class="btn btn-danger" onclick="clearToken()">Clear Token</button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="endpoint-group">
+                    <h3>🔐 Authentication</h3>
+                    <div class="endpoint-item" onclick="selectEndpoint('login')">
+                        <span class="method-badge method-post">POST</span>
+                        <span>/api/auth/login</span>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('register')">
+                        <span class="method-badge method-post">POST</span>
+                        <span>/api/auth/register</span>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('me')">
+                        <span class="method-badge method-get">GET</span>
+                        <span>/api/auth/me</span>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('forgot-password')">
+                        <span class="method-badge method-post">POST</span>
+                        <span>/api/auth/forgot-password</span>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('phone-send')">
+                        <span class="method-badge method-post">POST</span>
+                        <span>/api/auth/phone/send-code</span>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('phone-verify')">
+                        <span class="method-badge method-post">POST</span>
+                        <span>/api/auth/phone/verify-code</span>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('google-auth')">
+                        <span class="method-badge method-post">POST</span>
+                        <span>/api/auth/google</span>
+                    </div>
+                </div>
+
+                <div class="endpoint-group">
+                    <h3>👨‍⚕️ Therapist Registration</h3>
+                    <div class="endpoint-item" onclick="selectEndpoint('therapist-register')">
+                        <span class="method-badge method-post">POST</span>
+                        <span>/api/auth/therapist/register</span>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('therapist-status')">
+                        <span class="method-badge method-get">GET</span>
+                        <span>/api/auth/therapist/status/:id</span>
+                    </div>
+                </div>
+
+                <div class="endpoint-group">
+                    <h3>📋 Verification System</h3>
+                    <div class="endpoint-item" onclick="selectEndpoint('verification-register')">
+                        <span class="method-badge method-post">POST</span>
+                        <span>/api/verification/register</span>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('verification-status')">
+                        <span class="method-badge method-get">GET</span>
+                        <span>/api/verification/status/:id</span>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('verification-pending')">
+                        <span class="method-badge method-get">GET</span>
+                        <span>/api/verification/pending</span>
+                    </div>
+                </div>
+
+                <div class="endpoint-group">
+                    <h3>👥 User Management</h3>
+                    <div class="endpoint-item" onclick="selectEndpoint('therapist-list')">
+                        <span class="method-badge method-get">GET</span>
+                        <span>/api/therapist</span>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('client-list')">
+                        <span class="method-badge method-get">GET</span>
+                        <span>/api/client</span>
+                    </div>
+                </div>
+
+                <div class="endpoint-group">
+                    <h3>🔧 System</h3>
+                    <div class="endpoint-item" onclick="selectEndpoint('health')">
+                        <span class="method-badge method-get">GET</span>
+                        <span>/health</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-area">
+                <div id="welcome-screen">
+                    <h2>Welcome to Ataraxia-Next API Explorer! 🎉</h2>
+                    <p>This interactive API explorer allows you to test all endpoints with real Cognito authentication and PostgreSQL database integration.</p>
+                    
+                    <div class="quick-auth">
+                        <h4>🚀 Quick Start</h4>
+                        <p>Get started quickly with these test credentials:</p>
+                        <div class="quick-auth-buttons">
+                            <button class="btn btn-sm btn-primary" onclick="fillTestLogin()">Fill Test Login</button>
+                            <button class="btn btn-sm btn-success" onclick="fillTestRegister()">Fill Test Register</button>
+                            <button class="btn btn-sm btn-primary" onclick="checkSystemStatus()">Check System Status</button>
+                        </div>
+                    </div>
+
+                    <h3>Features:</h3>
+                    <ul style="margin: 20px 0; padding-left: 30px; line-height: 1.8;">
+                        <li>🔐 <strong>Real Cognito Authentication</strong> - No mock data, real AWS Cognito integration</li>
+                        <li>🗄️ <strong>PostgreSQL Database</strong> - Real database operations with Prisma ORM</li>
+                        <li>👨‍⚕️ <strong>Complete Therapist Workflow</strong> - Registration, verification, and approval</li>
+                        <li>📱 <strong>Phone & Google Auth</strong> - Multiple authentication methods</li>
+                        <li>🔍 <strong>Interactive Testing</strong> - Test all endpoints with real data</li>
+                        <li>📊 <strong>Real-time Status</strong> - Live system health monitoring</li>
+                    </ul>
+
+                    <p><strong>Select an endpoint from the sidebar to get started!</strong></p>
+                </div>
+
+                <!-- Endpoint Details Templates -->
+                <div id="endpoint-login" class="endpoint-details">
+                    <h2 class="endpoint-title">🔐 User Login</h2>
+                    <p class="endpoint-description">Authenticate user with email and password using real AWS Cognito</p>
+                    
+                    <div class="form-group">
+                        <label for="login-email">Email:</label>
+                        <input type="email" id="login-email" placeholder="user@example.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="login-password">Password:</label>
+                        <input type="password" id="login-password" placeholder="Enter password">
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="executeLogin()">Execute Login</button>
+                </div>
+
+                <div id="endpoint-register" class="endpoint-details">
+                    <h2 class="endpoint-title">📝 User Registration</h2>
+                    <p class="endpoint-description">Register new user with AWS Cognito and create database record</p>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="reg-firstName">First Name:</label>
+                            <input type="text" id="reg-firstName" placeholder="John">
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-lastName">Last Name:</label>
+                            <input type="text" id="reg-lastName" placeholder="Doe">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="reg-email">Email:</label>
+                        <input type="email" id="reg-email" placeholder="john.doe@example.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="reg-password">Password:</label>
+                        <input type="password" id="reg-password" placeholder="Minimum 8 characters">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="reg-role">Role:</label>
+                            <select id="reg-role">
+                                <option value="therapist">Therapist</option>
+                                <option value="client">Client</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-phone">Phone Number:</label>
+                            <input type="tel" id="reg-phone" placeholder="9999999999">
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="executeRegister()">Execute Registration</button>
+                </div>
+
+                <div id="endpoint-me" class="endpoint-details">
+                    <h2 class="endpoint-title">👤 Get Current User</h2>
+                    <p class="endpoint-description">Get current authenticated user information</p>
+                    
+                    <p><strong>Requires:</strong> Authorization token (login first)</p>
+                    
+                    <button class="btn btn-primary" onclick="executeGetMe()">Get Current User</button>
+                </div>
+
+                <div id="endpoint-therapist-register" class="endpoint-details">
+                    <h2 class="endpoint-title">👨‍⚕️ Therapist Registration</h2>
+                    <p class="endpoint-description">Complete therapist registration with professional details</p>
+                    
+                    <div class="tabs">
+                        <div class="tab active" onclick="switchTab('basic-info')">Basic Info</div>
+                        <div class="tab" onclick="switchTab('professional')">Professional</div>
+                        <div class="tab" onclick="switchTab('json-payload')">JSON Payload</div>
+                    </div>
+
+                    <div id="basic-info" class="tab-content active">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="th-firstName">First Name:</label>
+                                <input type="text" id="th-firstName" placeholder="Dr. Jane">
+                            </div>
+                            <div class="form-group">
+                                <label for="th-lastName">Last Name:</label>
+                                <input type="text" id="th-lastName" placeholder="Smith">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="th-email">Email:</label>
+                                <input type="email" id="th-email" placeholder="dr.smith@example.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="th-phone">Phone:</label>
+                                <input type="tel" id="th-phone" placeholder="9999999999">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="professional" class="tab-content">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="th-license">License Number:</label>
+                                <input type="text" id="th-license" placeholder="PSY12345">
+                            </div>
+                            <div class="form-group">
+                                <label for="th-state">License State:</label>
+                                <input type="text" id="th-state" placeholder="CA">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="th-specialties">Specialties (JSON array):</label>
+                            <textarea id="th-specialties" placeholder='["anxiety", "depression", "trauma"]'></textarea>
+                        </div>
+                    </div>
+
+                    <div id="json-payload" class="tab-content">
+                        <div class="form-group json-editor">
+                            <label for="th-json">Complete JSON Payload:</label>
+                            <button class="json-format-btn" onclick="formatTherapistJson()">Format</button>
+                            <textarea id="th-json" placeholder="Complete therapist registration JSON..."></textarea>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="executeTherapistRegister()">Submit Registration</button>
+                </div>
+
+                <div id="endpoint-health" class="endpoint-details">
+                    <h2 class="endpoint-title">🔧 System Health Check</h2>
+                    <p class="endpoint-description">Check system health including database and Cognito connectivity</p>
+                    
+                    <button class="btn btn-primary" onclick="executeHealthCheck()">Check System Health</button>
+                </div>
+
+                <!-- Add more endpoint details as needed -->
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Processing request...</p>
+                </div>
+
+                <div class="response-section" id="response-section" style="display: none;">
+                    <h4>Response:</h4>
+                    <div class="response-content" id="response-content"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE_URL = 'http://localhost:3010';
+        let currentToken = '';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            checkSystemStatus();
+            loadSavedToken();
+        });
+
+        // System Status Check
+        async function checkSystemStatus() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                const data = await response.json();
+                
+                updateStatus('api-status', 'api-status-text', true, 'Connected');
+                updateStatus('db-status', 'db-status-text', data.database === 'postgresql', data.database || 'Unknown');
+                updateStatus('cognito-status', 'cognito-status-text', data.cognito === 'configured', data.cognito || 'Not configured');
+                
+                document.getElementById('base-url').textContent = API_BASE_URL;
+            } catch (error) {
+                updateStatus('api-status', 'api-status-text', false, 'Disconnected');
+                updateStatus('db-status', 'db-status-text', false, 'Unknown');
+                updateStatus('cognito-status', 'cognito-status-text', false, 'Unknown');
+            }
+        }
+
+        function updateStatus(dotId, textId, isHealthy, text) {
+            const dot = document.getElementById(dotId);
+            const textEl = document.getElementById(textId);
+            
+            dot.className = `status-dot ${isHealthy ? '' : 'error'}`;
+            textEl.textContent = text;
+        }
+
+        // Token Management
+        function saveToken(token) {
+            currentToken = token;
+            document.getElementById('auth-token').value = token;
+            localStorage.setItem('ataraxia-token', token);
+        }
+
+        function loadSavedToken() {
+            const saved = localStorage.getItem('ataraxia-token');
+            if (saved) {
+                currentToken = saved;
+                document.getElementById('auth-token').value = saved;
+            }
+        }
+
+        function clearToken() {
+            currentToken = '';
+            document.getElementById('auth-token').value = '';
+            localStorage.removeItem('ataraxia-token');
+        }
+
+        // Endpoint Selection
+        function selectEndpoint(endpointId) {
+            // Hide welcome screen
+            document.getElementById('welcome-screen').style.display = 'none';
+            
+            // Hide all endpoint details
+            const details = document.querySelectorAll('.endpoint-details');
+            details.forEach(detail => detail.classList.remove('active'));
+            
+            // Show selected endpoint
+            const selected = document.getElementById(`endpoint-${endpointId}`);
+            if (selected) {
+                selected.classList.add('active');
+            }
+            
+            // Update sidebar selection
+            const items = document.querySelectorAll('.endpoint-item');
+            items.forEach(item => item.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            
+            // Hide response section
+            document.getElementById('response-section').style.display = 'none';
+        }
+
+        // Tab Management
+        function switchTab(tabId) {
+            // Update tab buttons
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            
+            // Update tab content
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        // API Execution Functions
+        async function executeRequest(method, endpoint, body = null, requiresAuth = false) {
+            showLoading(true);
+            
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            if (requiresAuth && currentToken) {
+                headers['Authorization'] = `Bearer ${currentToken}`;
+            }
+            
+            const config = {
+                method,
+                headers
+            };
+            
+            if (body) {
+                config.body = JSON.stringify(body);
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+                const data = await response.json();
+                
+                showResponse(data, response.ok);
+                
+                // Save token if login successful
+                if (response.ok && data.token) {
+                    saveToken(data.token);
+                }
+                
+            } catch (error) {
+                showResponse({ error: error.message }, false);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function executeLogin() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            if (!email || !password) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
+            await executeRequest('POST', '/api/auth/login', { email, password });
+        }
+
+        async function executeRegister() {
+            const firstName = document.getElementById('reg-firstName').value;
+            const lastName = document.getElementById('reg-lastName').value;
+            const email = document.getElementById('reg-email').value;
+            const password = document.getElementById('reg-password').value;
+            const role = document.getElementById('reg-role').value;
+            const phoneNumber = document.getElementById('reg-phone').value;
+            
+            if (!firstName || !lastName || !email || !password) {
+                alert('Please fill in required fields');
+                return;
+            }
+            
+            const body = { firstName, lastName, email, password, role };
+            if (phoneNumber) {
+                body.phoneNumber = phoneNumber;
+                body.countryCode = '+91';
+            }
+            
+            await executeRequest('POST', '/api/auth/register', body);
+        }
+
+        async function executeGetMe() {
+            if (!currentToken) {
+                alert('Please login first to get a token');
+                return;
+            }
+            
+            await executeRequest('GET', '/api/auth/me', null, true);
+        }
+
+        async function executeTherapistRegister() {
+            if (!currentToken) {
+                alert('Please login first to get a token');
+                return;
+            }
+            
+            // Check if using JSON payload tab
+            const jsonTab = document.getElementById('json-payload');
+            if (jsonTab.classList.contains('active')) {
+                const jsonPayload = document.getElementById('th-json').value;
+                if (!jsonPayload) {
+                    alert('Please provide JSON payload');
+                    return;
+                }
+                
+                try {
+                    const body = JSON.parse(jsonPayload);
+                    await executeRequest('POST', '/api/auth/therapist/register', body, true);
+                } catch (error) {
+                    alert('Invalid JSON format');
+                }
+                return;
+            }
+            
+            // Use form fields
+            const firstName = document.getElementById('th-firstName').value;
+            const lastName = document.getElementById('th-lastName').value;
+            const email = document.getElementById('th-email').value;
+            const phoneNumber = document.getElementById('th-phone').value;
+            const licenseNumber = document.getElementById('th-license').value;
+            const licenseState = document.getElementById('th-state').value;
+            
+            if (!firstName || !lastName || !licenseNumber || !licenseState) {
+                alert('Please fill in required fields');
+                return;
+            }
+            
+            let specializations = [];
+            try {
+                const specText = document.getElementById('th-specialties').value;
+                if (specText) {
+                    specializations = JSON.parse(specText);
+                }
+            } catch (error) {
+                alert('Invalid specializations JSON format');
+                return;
+            }
+            
+            const body = {
+                firstName,
+                lastName,
+                email,
+                phoneNumber,
+                countryCode: '+91',
+                licenseNumber,
+                licenseState,
+                specializations,
+                degree: 'PhD in Clinical Psychology',
+                institutionName: 'Stanford University',
+                graduationYear: 2015,
+                yearsOfExperience: 8,
+                bio: 'Experienced therapist specializing in anxiety and depression.',
+                hipaaTrainingCompleted: true,
+                ethicsCertification: true,
+                signedBaa: true,
+                backgroundCheckConsent: true
+            };
+            
+            await executeRequest('POST', '/api/auth/therapist/register', body, true);
+        }
+
+        async function executeHealthCheck() {
+            await executeRequest('GET', '/health');
+        }
+
+        // Quick Actions
+        function fillTestLogin() {
+            document.getElementById('login-email').value = 'test@example.com';
+            document.getElementById('login-password').value = 'TestPassword123!';
+        }
+
+        function fillTestRegister() {
+            document.getElementById('reg-firstName').value = 'Test';
+            document.getElementById('reg-lastName').value = 'User';
+            document.getElementById('reg-email').value = `test${Date.now()}@example.com`;
+            document.getElementById('reg-password').value = 'TestPassword123!';
+            document.getElementById('reg-role').value = 'therapist';
+            document.getElementById('reg-phone').value = '9999999999';
+        }
+
+        async function testLogin() {
+            fillTestLogin();
+            await executeLogin();
+        }
+
+        async function testRegister() {
+            fillTestRegister();
+            await executeRegister();
+        }
+
+        function formatTherapistJson() {
+            const textarea = document.getElementById('th-json');
+            try {
+                const parsed = JSON.parse(textarea.value);
+                textarea.value = JSON.stringify(parsed, null, 2);
+            } catch (error) {
+                // If invalid JSON, provide template
+                textarea.value = JSON.stringify({
+                    firstName: "Dr. Jane",
+                    lastName: "Smith",
+                    email: "dr.smith@example.com",
+                    phoneNumber: "9999999999",
+                    countryCode: "+91",
+                    licenseNumber: "PSY12345",
+                    licenseState: "CA",
+                    licenseType: "Clinical Psychologist",
+                    degree: "PhD in Clinical Psychology",
+                    institutionName: "Stanford University",
+                    graduationYear: 2015,
+                    yearsOfExperience: 8,
+                    specializations: ["anxiety", "depression", "trauma"],
+                    bio: "Experienced therapist specializing in anxiety and depression.",
+                    hipaaTrainingCompleted: true,
+                    ethicsCertification: true,
+                    signedBaa: true,
+                    backgroundCheckConsent: true
+                }, null, 2);
+            }
+        }
+
+        // UI Helper Functions
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function showResponse(data, isSuccess) {
+            const section = document.getElementById('response-section');
+            const content = document.getElementById('response-content');
+            
+            section.className = `response-section ${isSuccess ? 'response-success' : 'response-error'}`;
+            content.textContent = JSON.stringify(data, null, 2);
+            section.style.display = 'block';
+            
+            // Scroll to response
+            section.scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>

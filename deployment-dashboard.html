@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ataraxia Enhanced Therapist Service - Deployment Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .status-idle { background: #f0f0f0; color: #666; }
+        .status-building { background: #fff3cd; color: #856404; }
+        .status-deploying { background: #d1ecf1; color: #0c5460; }
+        .status-testing { background: #d4edda; color: #155724; }
+        .status-success { background: #d4edda; color: #155724; }
+        .status-failed { background: #f8d7da; color: #721c24; }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .card h3 {
+            font-size: 1.4em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .deployment-controls {
+            display: grid;
+            gap: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-group label {
+            font-weight: 500;
+            color: #555;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.6);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+            box-shadow: 0 4px 15px rgba(116, 185, 255, 0.4);
+        }
+
+        .btn-secondary:hover {
+            box-shadow: 0 8px 25px rgba(116, 185, 255, 0.6);
+        }
+
+        select, input[type="checkbox"] {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .progress-section {
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+
+        .step-list {
+            display: grid;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .step.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: scale(1.02);
+        }
+
+        .step.completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .step-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .step-icon.pending { background: #6c757d; color: white; }
+        .step-icon.active { background: #ffc107; color: #212529; }
+        .step-icon.completed { background: #28a745; color: white; }
+        .step-icon.failed { background: #dc3545; color: white; }
+
+        .logs-container {
+            background: #1e1e1e;
+            color: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+            padding: 2px 0;
+        }
+
+        .log-timestamp {
+            color: #6c757d;
+            margin-right: 8px;
+        }
+
+        .log-level-info { color: #17a2b8; }
+        .log-level-success { color: #28a745; }
+        .log-level-warning { color: #ffc107; }
+        .log-level-error { color: #dc3545; }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .metric {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .metric-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .api-test-section {
+            margin-top: 20px;
+        }
+
+        .api-endpoint {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .api-method {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .method-get { background: #28a745; }
+        .method-post { background: #007bff; }
+        .method-put { background: #ffc107; color: #212529; }
+        .method-delete { background: #dc3545; }
+
+        .api-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #6c757d;
+        }
+
+        .api-status.success { background: #28a745; }
+        .api-status.failed { background: #dc3545; }
+        .api-status.testing { background: #ffc107; animation: pulse 1s infinite; }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success { background: #28a745; }
+        .notification.error { background: #dc3545; }
+        .notification.info { background: #17a2b8; }
+
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 10px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Enhanced Therapist Service</h1>
+            <p>Deployment & Testing Dashboard</p>
+            <div class="status-badge" id="overallStatus">Ready to Deploy</div>
+        </div>
+
+        <div class="main-grid">
+            <!-- Deployment Controls -->
+            <div class="card">
+                <h3>🎛️ Deployment Controls</h3>
+                <div class="deployment-controls">
+                    <div class="control-group">
+                        <label for="environment">Environment:</label>
+                        <select id="environment">
+                            <option value="dev">Development</option>
+                            <option value="staging">Staging</option>
+                            <option value="prod">Production</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label>
+                            <input type="checkbox" id="skipBootstrap"> Skip CDK Bootstrap
+                        </label>
+                    </div>
+
+                    <div class="control-group">
+                        <label>
+                            <input type="checkbox" id="runTests" checked> Run Tests After Deploy
+                        </label>
+                    </div>
+
+                    <button class="btn" id="deployBtn" onclick="startDeployment()">
+                        🚀 Deploy Enhanced Service
+                    </button>
+
+                    <button class="btn btn-secondary" id="testBtn" onclick="testEndpoints()" disabled>
+                        🧪 Test API Endpoints
+                    </button>
+
+                    <button class="btn btn-danger" id="stopBtn" onclick="stopDeployment()" disabled>
+                        🛑 Stop Deployment
+                    </button>
+                </div>
+            </div>
+
+            <!-- Deployment Progress -->
+            <div class="card">
+                <h3>📊 Deployment Progress</h3>
+                <div class="progress-section">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                    </div>
+                    <div id="progressText">Ready to start deployment</div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-value" id="buildTime">0s</div>
+                        <div class="metric-label">Build Time</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value" id="deployTime">0s</div>
+                        <div class="metric-label">Deploy Time</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value" id="testTime">0s</div>
+                        <div class="metric-label">Test Time</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value" id="totalTime">0s</div>
+                        <div class="metric-label">Total Time</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deployment Steps -->
+        <div class="card">
+            <h3>📋 Deployment Steps</h3>
+            <div class="step-list" id="stepList">
+                <!-- Steps will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- API Endpoints Testing -->
+        <div class="card">
+            <h3>🔗 Enhanced API Endpoints</h3>
+            <div class="api-test-section" id="apiEndpoints">
+                <!-- API endpoints will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Live Logs -->
+        <div class="card full-width">
+            <h3>📝 Live Deployment Logs</h3>
+            <div class="logs-container" id="logsContainer">
+                <div class="log-entry">
+                    <span class="log-timestamp">[Ready]</span>
+                    <span class="log-level-info">Enhanced Therapist Service deployment dashboard ready</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script>
+        // API configuration
+        const API_BASE_URL = 'http://localhost:3012';
+        const WS_URL = 'ws://localhost:8081';
+        
+        // WebSocket connection
+        let ws = null;
+        
+        // Initialize deployment state
+        let deploymentState = {
+            status: 'idle',
+            environment: 'dev',
+            currentStep: '',
+            progress: 0,
+            startTime: null,
+            endTime: null,
+            deploymentId: null,
+            logs: [],
+            apiUrl: null,
+            cognitoConfig: null,
+            metrics: {
+                buildTime: 0,
+                deployTime: 0,
+                testTime: 0,
+                totalTime: 0
+            },
+            steps: [
+                'Prerequisites Check',
+                'TypeScript Build',
+                'CDK Bootstrap',
+                'Deploy Stack',
+                'Update Configuration',
+                'Test Endpoints'
+            ],
+            apiEndpoints: [
+                { method: 'GET', path: '/api/therapist', description: 'List all therapists' },
+                { method: 'GET', path: '/api/therapist/search', description: 'Advanced search' },
+                { method: 'GET', path: '/api/therapist/{id}', description: 'Get therapist by ID' },
+                { method: 'PUT', path: '/api/therapist/{id}', description: 'Update therapist' },
+                { method: 'POST', path: '/api/auth/login', description: 'Authentication' }
+            ]
+        };
+        
+        // Connect to WebSocket
+        function connectWebSocket() {
+            ws = new WebSocket(WS_URL);
+            
+            ws.onopen = () => {
+                addLog('info', 'Connected to deployment server');
+            };
+            
+            ws.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                
+                if (message.type === 'state') {
+                    updateDeploymentState(message.data);
+                } else if (message.type === 'log') {
+                    displayLogEntry(message.data);
+                }
+            };
+            
+            ws.onclose = () => {
+                addLog('warning', 'Disconnected from deployment server');
+                // Attempt to reconnect after 3 seconds
+                setTimeout(connectWebSocket, 3000);
+            };
+            
+            ws.onerror = (error) => {
+                addLog('error', 'WebSocket connection error');
+            };
+        }
+        
+        // Update deployment state from server
+        function updateDeploymentState(state) {
+            deploymentState = { ...deploymentState, ...state };
+            
+            // Update UI elements
+            updateProgress(state.progress || 0);
+            updateOverallStatus(state.status);
+            updateMetrics(state.metrics);
+            updateButtons(state.status);
+            
+            if (state.apiUrl) {
+                document.getElementById('testBtn').disabled = false;
+            }
+        }
+        
+        // Display log entry from server
+        function displayLogEntry(logEntry) {
+            const logsContainer = document.getElementById('logsContainer');
+            const timestamp = new Date(logEntry.timestamp).toLocaleTimeString();
+            
+            const logDiv = document.createElement('div');
+            logDiv.className = 'log-entry';
+            logDiv.innerHTML = `
+                <span class="log-timestamp">[${timestamp}]</span>
+                <span class="log-level-${logEntry.level}">${logEntry.message}</span>
+            `;
+            
+            logsContainer.appendChild(logDiv);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+
+            // Keep only last 100 entries
+            while (logsContainer.children.length > 100) {
+                logsContainer.removeChild(logsContainer.firstChild);
+            }
+        }
+        
+        // Update buttons based on deployment status
+        function updateButtons(status) {
+            const deployBtn = document.getElementById('deployBtn');
+            const testBtn = document.getElementById('testBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            
+            switch (status) {
+                case 'idle':
+                    deployBtn.disabled = false;
+                    stopBtn.disabled = true;
+                    break;
+                case 'building':
+                case 'deploying':
+                case 'testing':
+                    deployBtn.disabled = true;
+                    stopBtn.disabled = false;
+                    break;
+                case 'success':
+                    deployBtn.disabled = false;
+                    stopBtn.disabled = true;
+                    testBtn.disabled = false;
+                    break;
+                case 'failed':
+                    deployBtn.disabled = false;
+                    stopBtn.disabled = true;
+                    break;
+            }
+        }
+        
+        // Update overall status badge
+        function updateOverallStatus(status) {
+            const overallStatus = document.getElementById('overallStatus');
+            
+            switch (status) {
+                case 'idle':
+                    overallStatus.textContent = 'Ready to Deploy';
+                    overallStatus.className = 'status-badge status-idle';
+                    break;
+                case 'building':
+                    overallStatus.textContent = 'Building...';
+                    overallStatus.className = 'status-badge status-building';
+                    break;
+                case 'deploying':
+                    overallStatus.textContent = 'Deploying...';
+                    overallStatus.className = 'status-badge status-deploying';
+                    break;
+                case 'testing':
+                    overallStatus.textContent = 'Testing...';
+                    overallStatus.className = 'status-badge status-testing';
+                    break;
+                case 'success':
+                    overallStatus.textContent = 'Deployment Complete';
+                    overallStatus.className = 'status-badge status-success';
+                    break;
+                case 'failed':
+                    overallStatus.textContent = 'Deployment Failed';
+                    overallStatus.className = 'status-badge status-failed';
+                    break;
+            }
+        }
+        
+        // Update metrics display
+        function updateMetrics(metrics) {
+            if (metrics) {
+                document.getElementById('buildTime').textContent = `${metrics.buildTime || 0}s`;
+                document.getElementById('deployTime').textContent = `${metrics.deployTime || 0}s`;
+                document.getElementById('testTime').textContent = `${metrics.testTime || 0}s`;
+                document.getElementById('totalTime').textContent = `${metrics.totalTime || 0}s`;
+            }
+        }
+
+        // Initialize the dashboard
+        function initializeDashboard() {
+            renderSteps();
+            renderApiEndpoints();
+            addLog('info', 'Dashboard initialized and ready for deployment');
+        }
+
+        // Render deployment steps
+        function renderSteps() {
+            const stepList = document.getElementById('stepList');
+            stepList.innerHTML = deploymentState.steps.map((step, index) => `
+                <div class="step" id="step-${index}">
+                    <div class="step-icon pending" id="step-icon-${index}">${index + 1}</div>
+                    <div>${step}</div>
+                </div>
+            `).join('');
+        }
+
+        // Render API endpoints
+        function renderApiEndpoints() {
+            const apiEndpoints = document.getElementById('apiEndpoints');
+            apiEndpoints.innerHTML = deploymentState.apiEndpoints.map((endpoint, index) => `
+                <div class="api-endpoint" id="endpoint-${index}">
+                    <div>
+                        <span class="api-method method-${endpoint.method.toLowerCase()}">${endpoint.method}</span>
+                        <span style="margin-left: 10px;">${endpoint.path}</span>
+                        <span style="margin-left: 10px; color: #666; font-size: 0.9em;">${endpoint.description}</span>
+                    </div>
+                    <div class="api-status" id="endpoint-status-${index}"></div>
+                </div>
+            `).join('');
+        }
+
+        // Add log entry
+        function addLog(level, message) {
+            const logsContainer = document.getElementById('logsContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `
+                <span class="log-timestamp">[${timestamp}]</span>
+                <span class="log-level-${level}">${message}</span>
+            `;
+            
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+
+            // Keep only last 100 entries
+            while (logsContainer.children.length > 100) {
+                logsContainer.removeChild(logsContainer.firstChild);
+            }
+        }
+
+        // Show notification
+        function showNotification(type, message) {
+            const notification = document.getElementById('notification');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            notification.classList.add('show');
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Update deployment progress
+        function updateProgress(stepIndex, progress) {
+            deploymentState.currentStep = stepIndex;
+            
+            // Update progress bar
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            
+            progressFill.style.width = `${progress}%`;
+            progressText.textContent = `Step ${stepIndex + 1}/${deploymentState.steps.length}: ${deploymentState.steps[stepIndex]}`;
+
+            // Update step indicators
+            deploymentState.steps.forEach((step, index) => {
+                const stepElement = document.getElementById(`step-${index}`);
+                const stepIcon = document.getElementById(`step-icon-${index}`);
+                
+                if (index < stepIndex) {
+                    stepElement.className = 'step completed';
+                    stepIcon.className = 'step-icon completed';
+                    stepIcon.textContent = '✓';
+                } else if (index === stepIndex) {
+                    stepElement.className = 'step active';
+                    stepIcon.className = 'step-icon active';
+                    stepIcon.textContent = '⟳';
+                } else {
+                    stepElement.className = 'step';
+                    stepIcon.className = 'step-icon pending';
+                    stepIcon.textContent = index + 1;
+                }
+            });
+
+            // Update overall status
+            const overallStatus = document.getElementById('overallStatus');
+            if (progress === 100) {
+                overallStatus.textContent = 'Deployment Complete';
+                overallStatus.className = 'status-badge status-success';
+            } else {
+                overallStatus.textContent = 'Deploying...';
+                overallStatus.className = 'status-badge status-deploying';
+            }
+        }
+
+        // Start deployment
+        async function startDeployment() {
+            const environment = document.getElementById('environment').value;
+            const skipBootstrap = document.getElementById('skipBootstrap').checked;
+            const runTests = document.getElementById('runTests').checked;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/deployment/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ environment, skipBootstrap, runTests })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('success', 'Deployment started successfully!');
+                } else {
+                    showNotification('error', result.message);
+                }
+            } catch (error) {
+                showNotification('error', `Failed to start deployment: ${error.message}`);
+            }
+        }
+
+        // Test API endpoints
+        async function testEndpoints() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/deployment/test`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('success', 'API testing completed!');
+                    updateApiEndpointStatus(result.results);
+                } else {
+                    showNotification('error', result.message);
+                }
+            } catch (error) {
+                showNotification('error', `Failed to test endpoints: ${error.message}`);
+            }
+        }
+
+        // Stop deployment
+        async function stopDeployment() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/deployment/stop`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('info', 'Deployment stopped');
+                } else {
+                    showNotification('error', result.message);
+                }
+            } catch (error) {
+                showNotification('error', `Failed to stop deployment: ${error.message}`);
+            }
+        }
+
+        // Update API endpoint status display
+        function updateApiEndpointStatus(results) {
+            results.forEach((result, index) => {
+                const statusElement = document.getElementById(`endpoint-status-${index}`);
+                if (statusElement) {
+                    statusElement.className = `api-status ${result.success ? 'success' : 'failed'}`;
+                }
+            });
+        }
+
+        // Load initial deployment status
+        async function loadInitialStatus() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/deployment/status`);
+                const state = await response.json();
+                updateDeploymentState(state);
+            } catch (error) {
+                addLog('warning', 'Could not connect to deployment server');
+            }
+        }
+
+        // Initialize dashboard when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeDashboard();
+            connectWebSocket();
+            loadInitialStatus();
+        });
+
+        // Auto-refresh every 30 seconds to check deployment status
+        setInterval(() => {
+            if (deploymentState.status === 'deploying') {
+                addLog('info', 'Checking deployment status...');
+            }
+        }, 30000);
+    </script>
+</body>
+</html>

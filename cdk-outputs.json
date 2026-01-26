@@ -1,0 +1,9 @@
+{
+  "ataraxia-healthcare-dev": {
+    "OutputUserPoolClientId": "7ek8kg1td2ps985r21m7727q98",
+    "AtaraxiaApiEndpoint857D3655": "https://zojyvoao3c.execute-api.us-west-2.amazonaws.com/dev/",
+    "OutputApiGatewayUrl": "https://zojyvoao3c.execute-api.us-west-2.amazonaws.com/dev/",
+    "OutputAuthFunctionArn": "arn:aws:lambda:us-west-2:121775527089:function:ataraxia-auth-dev",
+    "OutputUserPoolId": "us-west-2_xeXlyFBMH"
+  }
+}

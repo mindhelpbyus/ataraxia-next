@@ -1,0 +1,686 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-1.0.x", "linux-musl"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model appointments {
+  id                                     BigInt           @id @default(autoincrement())
+  organization_id                        BigInt?
+  therapist_id                           BigInt
+  client_id                              BigInt?
+  title                                  String?
+  start_time                             DateTime         @db.Timestamptz(6)
+  end_time                               DateTime         @db.Timestamptz(6)
+  status                                 String?          @default("scheduled")
+  type                                   String?          @default("video")
+  is_video_call                          Boolean?         @default(true)
+  video_room_name                        String?
+  video_url                              String?
+  video_provider                         String?
+  notes                                  String?
+  flagged                                Boolean?         @default(false)
+  flag_note                              String?
+  created_at                             DateTime?        @default(now()) @db.Timestamptz(6)
+  updated_at                             DateTime?        @default(now()) @db.Timestamptz(6)
+  users_appointments_client_idTousers    users?           @relation("appointments_client_idTousers", fields: [client_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organizations                          organizations?   @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_appointments_therapist_idTousers users            @relation("appointments_therapist_idTousers", fields: [therapist_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  clinical_notes                         clinical_notes[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model clients {
+  id                                         BigInt    @id @default(autoincrement())
+  user_id                                    BigInt    @unique
+  assigned_therapist_id                      BigInt?
+  date_of_birth                              DateTime? @db.Date
+  gender_identity                            String?
+  pronouns                                   String?
+  preferred_language                         String?
+  marital_status                             String?
+  occupation                                 String?
+  address_1                                  String?
+  address_2                                  String?
+  city                                       String?
+  state                                      String?
+  zip_code                                   String?
+  country                                    String?
+  emergency_contact_json                     Json?     @default("{}")
+  has_insurance                              Boolean?  @default(false)
+  insurance_data                             Json?     @default("{}")
+  payment_method_id                          String?
+  payment_method_type                        String?
+  billing_address_json                       Json?
+  billing_outstanding_balance                Decimal?  @default(0.00) @db.Decimal(10, 2)
+  reason_for_therapy                         String?
+  presenting_concerns_data                   Json?
+  intake_safety_screening_data               Json?
+  medical_history                            Json?     @default("{}")
+  status                                     String?   @default("active")
+  safety_risk_level                          String?   @default("low")
+  safety_risk_flags                          String[]
+  safety_plan_url                            String?
+  risk_banner_alert                          String?
+  treatment_plan                             Json?     @default("{}")
+  diagnoses_structured                       Json?     @default("{}")
+  medications_current                        Json?     @default("[]")
+  assessment_scores                          Json?     @default("{}")
+  consents_signed                            Json?     @default("{}")
+  signature_url                              String?
+  created_at                                 DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at                                 DateTime? @default(now()) @db.Timestamptz(6)
+  users_clients_assigned_therapist_idTousers users?    @relation("clients_assigned_therapist_idTousers", fields: [assigned_therapist_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_clients_user_idTousers               users     @relation("clients_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model clinical_notes {
+  id                                       BigInt         @id @default(autoincrement())
+  organization_id                          BigInt?
+  client_id                                BigInt
+  therapist_id                             BigInt
+  appointment_id                           BigInt?
+  note_type                                String?
+  status                                   String?        @default("draft")
+  content_structured                       Json
+  diagnosis_codes                          String[]
+  signed_at                                DateTime?      @db.Timestamptz(6)
+  created_at                               DateTime?      @default(now()) @db.Timestamptz(6)
+  updated_at                               DateTime?      @default(now()) @db.Timestamptz(6)
+  appointments                             appointments?  @relation(fields: [appointment_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_clinical_notes_client_idTousers    users          @relation("clinical_notes_client_idTousers", fields: [client_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organizations                            organizations? @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_clinical_notes_therapist_idTousers users          @relation("clinical_notes_therapist_idTousers", fields: [therapist_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model email_verification_tokens {
+  id          BigInt    @id @default(autoincrement())
+  user_id     BigInt
+  token       String    @unique
+  expires_at  DateTime  @db.Timestamptz(6)
+  verified_at DateTime? @db.Timestamptz(6)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  users       users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([token], map: "idx_email_verification_tokens_token")
+  @@index([user_id], map: "idx_email_verification_tokens_user_id")
+}
+
+model mfa_secrets {
+  id           BigInt    @id @default(autoincrement())
+  user_id      BigInt    @unique
+  secret       String
+  backup_codes String[]
+  enabled_at   DateTime? @db.Timestamptz(6)
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime? @default(now()) @db.Timestamptz(6)
+  users        users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_mfa_secrets_user_id")
+}
+
+model organization_invites {
+  id                                           BigInt        @id @default(autoincrement())
+  organization_id                              BigInt
+  invite_code                                  String        @unique @db.VarChar(100)
+  email                                        String?       @db.VarChar(255)
+  role                                         String?       @default("therapist") @db.VarChar(50)
+  status                                       String?       @default("active") @db.VarChar(50)
+  max_uses                                     Int?          @default(1)
+  current_uses                                 Int?          @default(0)
+  expires_at                                   DateTime?     @db.Timestamptz(6)
+  created_by                                   BigInt?
+  used_by                                      BigInt?
+  used_at                                      DateTime?     @db.Timestamptz(6)
+  created_at                                   DateTime?     @default(now()) @db.Timestamptz(6)
+  users_organization_invites_created_byTousers users?        @relation("organization_invites_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organizations                                organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_organization_invites_used_byTousers    users?        @relation("organization_invites_used_byTousers", fields: [used_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([invite_code], map: "idx_org_invites_code")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model organizations {
+  id                                            BigInt                 @id @default(autoincrement())
+  name                                          String
+  legal_name                                    String
+  dba                                           String?
+  tax_id                                        String?
+  npi                                           String?
+  slug                                          String?                @unique
+  type                                          String?
+  primary_contact_name                          String?
+  primary_contact_email                         String?
+  primary_contact_phone                         String?
+  primary_contact_country_code                  String?                @default("+1")
+  hq_address_1                                  String?
+  hq_address_2                                  String?
+  hq_city                                       String?
+  hq_state                                      String?
+  hq_zip                                        String?
+  hq_country                                    String?                @default("US")
+  billing_address_same_as_hq                    Boolean?               @default(true)
+  billing_address_1                             String?
+  billing_address_2                             String?
+  billing_city                                  String?
+  billing_state                                 String?
+  billing_zip                                   String?
+  billing_country                               String?
+  number_of_clinicians                          Int?                   @default(1)
+  departments                                   String[]
+  divisions                                     String[]
+  hipaa_baa_signed                              Boolean?               @default(false)
+  data_processing_agreement_signed              Boolean?               @default(false)
+  audit_logging_level                           String?                @default("standard")
+  mfa_required                                  Boolean?               @default(true)
+  password_policy                               Json?                  @default("{\"minLength\": 12, \"rotationDays\": 90, \"sessionTimeoutMinutes\": 30}")
+  brand_color_primary                           String?                @default("#F97316")
+  brand_color_secondary                         String?                @default("#F59E0B")
+  logo_url                                      String?
+  email_sender_name                             String?
+  sms_sender_name                               String?
+  custom_domain                                 String?
+  custom_login_branding                         Boolean?               @default(false)
+  subscription_plan                             String?                @default("trial")
+  subscription_status                           String?                @default("active")
+  integrations_enabled                          Json?                  @default("{}")
+  created_at                                    DateTime?              @default(now()) @db.Timestamptz(6)
+  updated_at                                    DateTime?              @default(now()) @db.Timestamptz(6)
+  trial_start_date                              DateTime?              @db.Timestamptz(6)
+  trial_end_date                                DateTime?              @db.Timestamptz(6)
+  created_by_user_id                            BigInt?
+  appointments                                  appointments[]
+  clinical_notes                                clinical_notes[]
+  organization_invites                          organization_invites[]
+  users_organizations_created_by_user_idTousers users?                 @relation("organizations_created_by_user_idTousers", fields: [created_by_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  subscriptions                                 subscriptions[]
+  users_users_organization_idToorganizations    users[]                @relation("users_organization_idToorganizations")
+}
+
+model password_reset_tokens {
+  id         BigInt    @id @default(autoincrement())
+  user_id    BigInt
+  token      String    @unique
+  expires_at DateTime  @db.Timestamptz(6)
+  used_at    DateTime? @db.Timestamptz(6)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([token], map: "idx_password_reset_tokens_token")
+  @@index([user_id], map: "idx_password_reset_tokens_user_id")
+}
+
+model permissions {
+  id               Int                @id @default(autoincrement())
+  name             String             @unique @db.VarChar(100)
+  display_name     String             @db.VarChar(100)
+  description      String?
+  resource         String             @db.VarChar(50)
+  action           String             @db.VarChar(50)
+  created_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  role_permissions role_permissions[]
+}
+
+model refresh_tokens {
+  id          BigInt    @id @default(autoincrement())
+  user_id     BigInt
+  token       String    @unique
+  expires_at  DateTime  @db.Timestamptz(6)
+  revoked_at  DateTime? @db.Timestamptz(6)
+  device_info Json?
+  ip_address  String?
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  users       users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([token], map: "idx_refresh_tokens_token")
+  @@index([user_id], map: "idx_refresh_tokens_user_id")
+}
+
+model role_change_audit {
+  id                                        BigInt    @id @default(autoincrement())
+  user_id                                   BigInt
+  role_id                                   Int
+  action                                    String    @db.VarChar(20)
+  changed_by                                BigInt?
+  reason                                    String?
+  created_at                                DateTime? @default(now()) @db.Timestamptz(6)
+  users_role_change_audit_changed_byTousers users?    @relation("role_change_audit_changed_byTousers", fields: [changed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  roles                                     roles     @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_role_change_audit_user_idTousers    users     @relation("role_change_audit_user_idTousers", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([created_at], map: "idx_role_change_audit_created_at")
+  @@index([user_id], map: "idx_role_change_audit_user_id")
+}
+
+model role_permissions {
+  role_id       Int
+  permission_id Int
+  granted_at    DateTime?   @default(now()) @db.Timestamptz(6)
+  permissions   permissions @relation(fields: [permission_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  roles         roles       @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([role_id, permission_id])
+}
+
+model roles {
+  id                Int                 @id @default(autoincrement())
+  name              String              @unique @db.VarChar(50)
+  display_name      String              @db.VarChar(100)
+  description       String?
+  is_system_role    Boolean?            @default(false)
+  is_active         Boolean?            @default(true)
+  created_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  role_change_audit role_change_audit[]
+  role_permissions  role_permissions[]
+  user_roles        user_roles[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model subscription_plans {
+  id              Int             @id @default(autoincrement())
+  name            String
+  slug            String          @unique
+  price_cents     Int
+  currency        String?         @default("USD") @db.VarChar(3)
+  interval        String?
+  features        Json?           @default("{}")
+  is_active       Boolean?        @default(true)
+  stripe_price_id String?
+  created_at      DateTime?       @default(now()) @db.Timestamptz(6)
+  subscriptions   subscriptions[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model subscriptions {
+  id                     BigInt              @id @default(autoincrement())
+  organization_id        BigInt?
+  user_id                BigInt?
+  plan_id                Int?
+  status                 String
+  current_period_start   DateTime?           @db.Timestamptz(6)
+  current_period_end     DateTime?           @db.Timestamptz(6)
+  cancel_at_period_end   Boolean?            @default(false)
+  canceled_at            DateTime?           @db.Timestamptz(6)
+  stripe_subscription_id String?
+  stripe_customer_id     String?
+  created_at             DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime?           @default(now()) @db.Timestamptz(6)
+  organizations          organizations?      @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  subscription_plans     subscription_plans? @relation(fields: [plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                  users?              @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model temp_therapist_registrations {
+  id                                                   BigInt                      @id @default(autoincrement())
+  firebase_uid                                         String                      @unique @db.VarChar(255)
+  email                                                String?                     @db.VarChar(255)
+  phone_number                                         String?                     @db.VarChar(20)
+  first_name                                           String                      @db.VarChar(100)
+  last_name                                            String                      @db.VarChar(100)
+  license_number                                       String                      @db.VarChar(100)
+  license_state                                        String                      @db.VarChar(50)
+  license_expiry                                       DateTime                    @db.Date
+  registration_status                                  String?                     @default("pending_review") @db.VarChar(50)
+  workflow_stage                                       String?                     @default("registration_submitted") @db.VarChar(50)
+  background_check_status                              String?                     @default("pending") @db.VarChar(50)
+  background_check_consent                             Boolean?                    @default(false)
+  created_at                                           DateTime?                   @default(now()) @db.Timestamptz(6)
+  updated_at                                           DateTime?                   @default(now()) @db.Timestamptz(6)
+  languages_spoken                                     String[]                    @default([])
+  timezone                                             String?                     @db.VarChar(100)
+  gender                                               String?                     @db.VarChar(50)
+  profile_photo_url                                    String?
+  selected_avatar_url                                  String?
+  bio                                                  Bytes?
+  phone_country_code                                   String?                     @default("+1") @db.VarChar(10)
+  institution_name                                     String?                     @db.VarChar(255)
+  graduation_year                                      String?                     @db.VarChar(4)
+  clinical_specialties                                 Json?                       @default("{}")
+  life_context_specialties                             Json?                       @default("{}")
+  therapeutic_modalities                               Json?                       @default("{}")
+  personal_style                                       Json?                       @default("{}")
+  session_formats                                      Json?                       @default("{}")
+  new_clients_capacity                                 Int?
+  max_caseload_capacity                                Int?
+  client_intake_speed                                  String?                     @db.VarChar(20)
+  emergency_same_day_capacity                          Boolean?                    @default(false)
+  preferred_scheduling_density                         String?                     @db.VarChar(20)
+  weekly_schedule                                      Json?                       @default("{}")
+  session_durations                                    Int[]                       @default([])
+  demographic_preferences                              Json?                       @default("{}")
+  insurance_panels_accepted                            Json?                       @default("[]")
+  medicaid_acceptance                                  Boolean?                    @default(false)
+  medicare_acceptance                                  Boolean?                    @default(false)
+  self_pay_accepted                                    Boolean?                    @default(false)
+  sliding_scale                                        Boolean?                    @default(false)
+  employer_eaps                                        Json?                       @default("[]")
+  hipaa_training_completed                             Boolean?                    @default(false)
+  ethics_certification                                 Boolean?                    @default(false)
+  signed_baa                                           Boolean?                    @default(false)
+  w9_document_url                                      String?
+  hipaa_document_url                                   String?
+  ethics_document_url                                  String?
+  background_check_document_url                        String?
+  short_bio                                            String?                     @db.VarChar(100)
+  extended_bio                                         String?
+  what_clients_can_expect                              String?
+  my_approach_to_therapy                               String?
+  date_of_birth                                        DateTime?                   @db.Date
+  address_line1                                        String?                     @db.VarChar(255)
+  address_line2                                        String?                     @db.VarChar(255)
+  malpractice_document_url                             String?
+  dea_number                                           String?                     @db.VarChar(50)
+  licensing_authority                                  String?                     @db.VarChar(255)
+  city                                                 String?                     @db.VarChar(100)
+  state                                                String?                     @db.VarChar(50)
+  zip_code                                             String?                     @db.VarChar(20)
+  country                                              String?                     @default("US") @db.VarChar(50)
+  degree                                               String?                     @db.VarChar(100)
+  specializations                                      String[]
+  years_of_experience                                  Int?
+  license_type                                         String?                     @db.VarChar(50)
+  license_document_url                                 String?
+  degree_certificate_url                               String?
+  photo_id_url                                         String?
+  headshot_url                                         String?
+  malpractice_insurance_provider                       String?                     @db.VarChar(255)
+  malpractice_policy_number                            String?                     @db.VarChar(100)
+  malpractice_expiry                                   DateTime?                   @db.Date
+  npi_number                                           String?                     @db.VarChar(20)
+  application_submitted_at                             DateTime?                   @db.Timestamptz(6)
+  application_last_updated_at                          DateTime?                   @default(now()) @db.Timestamptz(6)
+  application_deleted_at                               DateTime?                   @db.Timestamptz(6)
+  deleted_by                                           BigInt?
+  deletion_reason                                      String?
+  user_id                                              BigInt?                     @unique(map: "unique_temp_therapist_user_id")
+  auth_provider_id                                     String?                     @db.VarChar(255)
+  auth_provider_type                                   String?                     @default("firebase") @db.VarChar(50)
+  users_temp_therapist_registrations_deleted_byTousers users?                      @relation("temp_therapist_registrations_deleted_byTousers", fields: [deleted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_temp_therapist_registrations_user_idTousers    users?                      @relation("temp_therapist_registrations_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  verification_audit_log                               verification_audit_log[]
+  verification_workflow_log                            verification_workflow_log[]
+
+  @@index([application_submitted_at], map: "idx_temp_therapist_application_submitted")
+  @@index([auth_provider_id], map: "idx_temp_therapist_auth_provider_id")
+  @@index([firebase_uid], map: "idx_temp_therapist_firebase_uid")
+  @@index([registration_status], map: "idx_temp_therapist_status")
+  @@index([timezone], map: "idx_temp_therapist_timezone")
+  @@index([user_id], map: "idx_temp_therapist_user_id")
+}
+
+model therapist_verifications {
+  id                                               BigInt    @id @default(autoincrement())
+  user_id                                          BigInt    @unique
+  license_number                                   String?   @db.VarChar(100)
+  license_state                                    String?   @db.VarChar(50)
+  license_expiry                                   DateTime? @db.Date
+  license_document_url                             String?
+  license_verified                                 Boolean?  @default(false)
+  degree                                           String?   @db.VarChar(100)
+  specializations                                  String[]
+  years_of_experience                              Int?
+  background_check_status                          String?   @default("not_started") @db.VarChar(50)
+  background_check_provider                        String?   @db.VarChar(100)
+  background_check_id                              String?   @db.VarChar(255)
+  background_check_completed_at                    DateTime? @db.Timestamptz(6)
+  background_check_result                          Json?
+  malpractice_insurance_provider                   String?   @db.VarChar(255)
+  malpractice_policy_number                        String?   @db.VarChar(100)
+  malpractice_expiry                               DateTime? @db.Date
+  malpractice_document_url                         String?
+  npi_number                                       String?   @db.VarChar(20)
+  npi_verified                                     Boolean?  @default(false)
+  verification_status                              String?   @default("pending") @db.VarChar(50)
+  verification_notes                               String?
+  rejection_reason                                 String?
+  submitted_at                                     DateTime? @db.Timestamptz(6)
+  reviewed_at                                      DateTime? @db.Timestamptz(6)
+  reviewed_by                                      BigInt?
+  created_at                                       DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at                                       DateTime? @default(now()) @db.Timestamptz(6)
+  approved_by                                      BigInt?
+  users_therapist_verifications_approved_byTousers users?    @relation("therapist_verifications_approved_byTousers", fields: [approved_by], references: [id], onUpdate: NoAction)
+  users_therapist_verifications_reviewed_byTousers users?    @relation("therapist_verifications_reviewed_byTousers", fields: [reviewed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_therapist_verifications_user_idTousers     users     @relation("therapist_verifications_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([verification_status], map: "idx_therapist_verifications_status")
+  @@index([user_id], map: "idx_therapist_verifications_user_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model therapists {
+  id                            BigInt    @id @default(autoincrement())
+  user_id                       BigInt    @unique
+  bio_short                     String?
+  bio_extended                  String?
+  approach_description          String?
+  what_to_expect_description    String?
+  license_type                  String?
+  license_number                String?
+  npi_number                    String?
+  dea_number                    String?
+  highest_degree                String?
+  institution_name              String?
+  graduation_year               Int?
+  years_of_experience           Int?
+  licenses                      Json?     @default("[]")
+  clinical_specialties          Json?     @default("{}")
+  therapeutic_modalities        Json?     @default("{}")
+  personal_style                Json?     @default("{}")
+  demographic_preferences       Json?     @default("{}")
+  session_capacity_weekly       Int?      @default(20)
+  new_clients_capacity          Int?
+  session_lengths_offered       Int[]
+  accepted_insurances           String[]
+  languages_spoken              String[]
+  weekly_schedule               Json?     @default("{}")
+  background_check_status       String?
+  hipaa_training_completed      Boolean?  @default(false)
+  created_at                    DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at                    DateTime? @default(now()) @db.Timestamptz(6)
+  life_context_specialties      Json?     @default("{}")
+  session_formats               Json?     @default("{}")
+  max_caseload_capacity         Int?
+  client_intake_speed           String?   @db.VarChar(20)
+  emergency_same_day_capacity   Boolean?  @default(false)
+  preferred_scheduling_density  String?   @db.VarChar(20)
+  insurance_panels_accepted     Json?     @default("[]")
+  medicaid_acceptance           Boolean?  @default(false)
+  medicare_acceptance           Boolean?  @default(false)
+  self_pay_accepted             Boolean?  @default(false)
+  sliding_scale                 Boolean?  @default(false)
+  employer_eaps                 Json?     @default("[]")
+  ethics_certification          Boolean?  @default(false)
+  signed_baa                    Boolean?  @default(false)
+  w9_document_url               String?
+  hipaa_document_url            String?
+  ethics_document_url           String?
+  background_check_document_url String?
+  short_bio                     String?   @db.VarChar(100)
+  extended_bio                  String?
+  what_clients_can_expect       String?
+  my_approach_to_therapy        String?
+  timezone                      String?   @default("UTC") @db.VarChar(100)
+  session_settings              Json?     @default("{}")
+  date_of_birth                 DateTime? @db.Date
+  phone_country_code            String?   @default("+1") @db.VarChar(10)
+  selected_avatar_url           String?
+  headshot_url                  String?
+  bio                           String?
+  session_durations             Int[]     @default([])
+  address_line2                 String?   @db.VarChar(255)
+  city                          String?   @db.VarChar(100)
+  state                         String?   @db.VarChar(100)
+  zip_code                      String?   @db.VarChar(20)
+  country                       String?   @default("US") @db.VarChar(100)
+  gender                        String?   @db.VarChar(50)
+  profile_photo_url             String?
+  users                         users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([insurance_panels_accepted], map: "idx_therapists_insurance", type: Gin)
+  @@index([city, state, country], map: "idx_therapists_location")
+  @@index([session_formats], map: "idx_therapists_session_formats", type: Gin)
+  @@index([user_id], map: "idx_therapists_user_id")
+}
+
+model user_roles {
+  user_id                             BigInt
+  role_id                             Int
+  assigned_by                         BigInt?
+  assigned_at                         DateTime? @default(now()) @db.Timestamptz(6)
+  expires_at                          DateTime? @db.Timestamptz(6)
+  is_primary                          Boolean?  @default(false)
+  users_user_roles_assigned_byTousers users?    @relation("user_roles_assigned_byTousers", fields: [assigned_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  roles                               roles     @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_user_roles_user_idTousers     users     @relation("user_roles_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([user_id, role_id])
+  @@index([role_id], map: "idx_user_roles_role_id")
+  @@index([user_id], map: "idx_user_roles_user_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model users {
+  id                                                                          BigInt                         @id @default(autoincrement())
+  organization_id                                                             BigInt?
+  email                                                                       String                         @unique
+  password_hash                                                               String?
+  first_name                                                                  String
+  middle_name                                                                 String?
+  last_name                                                                   String
+  preferred_name                                                              String?
+  role                                                                        String
+  phone_number                                                                String?
+  country_code                                                                String?                        @default("+1")
+  profile_image_url                                                           String?
+  is_active                                                                   Boolean?                       @default(true)
+  last_login_at                                                               DateTime?                      @db.Timestamptz(6)
+  firebase_uid                                                                String?                        @unique
+  mfa_enabled                                                                 Boolean?                       @default(false)
+  onboarding_step                                                             Int?                           @default(0)
+  onboarding_status                                                           String?                        @default("pending")
+  onboarding_session_id                                                       String?
+  marketing_consent                                                           Boolean?                       @default(false)
+  referral_source                                                             String?
+  created_at                                                                  DateTime?                      @default(now()) @db.Timestamptz(6)
+  updated_at                                                                  DateTime?                      @default(now()) @db.Timestamptz(6)
+  email_verified                                                              Boolean?                       @default(false)
+  email_verified_at                                                           DateTime?                      @db.Timestamptz(6)
+  signup_source                                                               String?                        @db.VarChar(50)
+  signup_platform                                                             String?                        @db.VarChar(50)
+  signup_device_info                                                          Json?
+  account_status                                                              String?                        @default("active") @db.VarChar(50)
+  is_verified                                                                 Boolean?                       @default(true)
+  verified_at                                                                 DateTime?                      @db.Timestamptz(6)
+  verified_by                                                                 BigInt?
+  verification_stage                                                          String?                        @db.VarChar(50)
+  primary_user_id                                                             BigInt?
+  display_name                                                                String?                        @db.VarChar(200)
+  user_timezone                                                               String?                        @db.VarChar(100)
+  language                                                                    String?                        @default("en") @db.VarChar(10)
+  last_login_ip                                                               String?                        @db.VarChar(45)
+  deleted_at                                                                  DateTime?                      @db.Timestamptz(6)
+  avatar_url                                                                  String?
+  auth_methods                                                                Json?                          @default("[]")
+  terms_accepted_at                                                           DateTime?                      @db.Timestamptz(6)
+  terms_version                                                               String?                        @db.VarChar(20)
+  is_org_owner                                                                Boolean?                       @default(false)
+  auth_provider_id                                                            String?                        @db.VarChar(255)
+  auth_provider_type                                                          String?                        @default("firebase") @db.VarChar(50)
+  auth_provider_metadata                                                      Json?                          @default("{}")
+  appointments_appointments_client_idTousers                                  appointments[]                 @relation("appointments_client_idTousers")
+  appointments_appointments_therapist_idTousers                               appointments[]                 @relation("appointments_therapist_idTousers")
+  clients_clients_assigned_therapist_idTousers                                clients[]                      @relation("clients_assigned_therapist_idTousers")
+  clients_clients_user_idTousers                                              clients?                       @relation("clients_user_idTousers")
+  clinical_notes_clinical_notes_client_idTousers                              clinical_notes[]               @relation("clinical_notes_client_idTousers")
+  clinical_notes_clinical_notes_therapist_idTousers                           clinical_notes[]               @relation("clinical_notes_therapist_idTousers")
+  email_verification_tokens                                                   email_verification_tokens[]
+  mfa_secrets                                                                 mfa_secrets?
+  organization_invites_organization_invites_created_byTousers                 organization_invites[]         @relation("organization_invites_created_byTousers")
+  organization_invites_organization_invites_used_byTousers                    organization_invites[]         @relation("organization_invites_used_byTousers")
+  organizations_organizations_created_by_user_idTousers                       organizations[]                @relation("organizations_created_by_user_idTousers")
+  password_reset_tokens                                                       password_reset_tokens[]
+  refresh_tokens                                                              refresh_tokens[]
+  role_change_audit_role_change_audit_changed_byTousers                       role_change_audit[]            @relation("role_change_audit_changed_byTousers")
+  role_change_audit_role_change_audit_user_idTousers                          role_change_audit[]            @relation("role_change_audit_user_idTousers")
+  subscriptions                                                               subscriptions[]
+  temp_therapist_registrations_temp_therapist_registrations_deleted_byTousers temp_therapist_registrations[] @relation("temp_therapist_registrations_deleted_byTousers")
+  temp_therapist_registrations_temp_therapist_registrations_user_idTousers    temp_therapist_registrations?  @relation("temp_therapist_registrations_user_idTousers")
+  therapist_verifications_therapist_verifications_approved_byTousers          therapist_verifications[]      @relation("therapist_verifications_approved_byTousers")
+  therapist_verifications_therapist_verifications_reviewed_byTousers          therapist_verifications[]      @relation("therapist_verifications_reviewed_byTousers")
+  therapist_verifications_therapist_verifications_user_idTousers              therapist_verifications?       @relation("therapist_verifications_user_idTousers")
+  therapists                                                                  therapists?
+  user_roles_user_roles_assigned_byTousers                                    user_roles[]                   @relation("user_roles_assigned_byTousers")
+  user_roles_user_roles_user_idTousers                                        user_roles[]                   @relation("user_roles_user_idTousers")
+  organizations_users_organization_idToorganizations                          organizations?                 @relation("users_organization_idToorganizations", fields: [organization_id], references: [id], onUpdate: NoAction)
+  users_users_primary_user_idTousers                                          users?                         @relation("users_primary_user_idTousers", fields: [primary_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  other_users_users_primary_user_idTousers                                    users[]                        @relation("users_primary_user_idTousers")
+  users_users_verified_byTousers                                              users?                         @relation("users_verified_byTousers", fields: [verified_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  other_users_users_verified_byTousers                                        users[]                        @relation("users_verified_byTousers")
+  verification_audit_log_verification_audit_log_performed_byTousers           verification_audit_log[]       @relation("verification_audit_log_performed_byTousers")
+  verification_audit_log_verification_audit_log_user_idTousers                verification_audit_log[]       @relation("verification_audit_log_user_idTousers")
+  verification_workflow_log_verification_workflow_log_performed_byTousers     verification_workflow_log[]    @relation("verification_workflow_log_performed_byTousers")
+  verification_workflow_log_verification_workflow_log_user_idTousers          verification_workflow_log[]    @relation("verification_workflow_log_user_idTousers")
+
+  @@index([account_status], map: "idx_users_account_status")
+  @@index([auth_methods], map: "idx_users_auth_methods", type: Gin)
+  @@index([auth_provider_id, auth_provider_type], map: "idx_users_auth_provider")
+  @@index([auth_provider_id], map: "idx_users_auth_provider_id")
+  @@index([auth_provider_type], map: "idx_users_auth_provider_type")
+  @@index([deleted_at], map: "idx_users_deleted_at")
+  @@index([email], map: "idx_users_email")
+  @@index([role], map: "idx_users_role")
+  @@index([signup_platform], map: "idx_users_signup_platform")
+  @@index([signup_source], map: "idx_users_signup_source")
+  @@index([verification_stage], map: "idx_users_verification_stage")
+}
+
+model verification_audit_log {
+  id                                               BigInt                        @id @default(autoincrement())
+  user_id                                          BigInt
+  action                                           String                        @db.VarChar(100)
+  old_status                                       String?                       @db.VarChar(50)
+  new_status                                       String?                       @db.VarChar(50)
+  performed_by                                     BigInt?
+  notes                                            String?
+  metadata                                         Json?
+  created_at                                       DateTime?                     @default(now()) @db.Timestamptz(6)
+  temp_registration_id                             BigInt?
+  users_verification_audit_log_performed_byTousers users?                        @relation("verification_audit_log_performed_byTousers", fields: [performed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  temp_therapist_registrations                     temp_therapist_registrations? @relation(fields: [temp_registration_id], references: [id], onUpdate: NoAction)
+  users_verification_audit_log_user_idTousers      users                         @relation("verification_audit_log_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_verification_audit_user_id")
+}
+
+model verification_workflow_log {
+  id                                                  BigInt                       @id @default(autoincrement())
+  temp_registration_id                                BigInt
+  workflow_stage                                      String                       @db.VarChar(50)
+  action                                              String                       @db.VarChar(100)
+  status                                              String                       @db.VarChar(50)
+  performed_by                                        BigInt?
+  performed_by_type                                   String?                      @default("system") @db.VarChar(50)
+  details                                             Json?
+  created_at                                          DateTime?                    @default(now()) @db.Timestamptz(6)
+  user_id                                             BigInt?
+  users_verification_workflow_log_performed_byTousers users?                       @relation("verification_workflow_log_performed_byTousers", fields: [performed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  temp_therapist_registrations                        temp_therapist_registrations @relation(fields: [temp_registration_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_verification_workflow_log_user_idTousers      users?                       @relation("verification_workflow_log_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([temp_registration_id], map: "idx_workflow_log_temp_reg_id")
+  @@index([user_id], map: "idx_workflow_log_user_id")
+}

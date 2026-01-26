@@ -1,0 +1,548 @@
+/**
+ * Auth Lambda Handler - AWS Cognito Version
+ * Healthcare-focused authentication without social media complexity
+ * Maintains exact same API contract for frontend compatibility
+ */
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { query, queryOne } from '../../lib/database';
+import { createLogger, PerformanceMonitor } from '../../shared/logger';
+import { successResponse, errorResponse, validationErrorResponse } from '../../shared/response';
+import { generateToken } from './utils/jwtGenerator.js';
+import { 
+  registerUser as cognitoRegister,
+  authenticateUser as cognitoAuth,
+  confirmSignUp,
+  resendConfirmationCode,
+  forgotPassword,
+  confirmForgotPassword
+} from './utils/cognito';
+
+const logger = createLogger('auth-service');
+
+export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+  const requestId = event.requestContext.requestId;
+  const path = event.path;
+  const method = event.httpMethod;
+  
+  const logContext = {
+    requestId,
+    path,
+    method,
+    userAgent: event.headers['User-Agent'],
+    ip: event.requestContext.identity.sourceIp
+  };
+
+  logger.info('Auth request received', logContext);
+
+  try {
+    // Handle CORS preflight
+    if (method === 'OPTIONS') {
+      return successResponse({}, 'CORS preflight', requestId);
+    }
+
+    // Route to appropriate handler
+    if (path === '/api/auth/register' && method === 'POST') {
+      return await handleRegister(event, requestId, logContext);
+    }
+    
+    if (path === '/api/auth/login' && method === 'POST') {
+      return await handleLogin(event, requestId, logContext);
+    }
+    
+    if (path === '/api/auth/confirm' && method === 'POST') {
+      return await handleConfirmSignUp(event, requestId, logContext);
+    }
+    
+    if (path === '/api/auth/resend-code' && method === 'POST') {
+      return await handleResendCode(event, requestId, logContext);
+    }
+    
+    if (path === '/api/auth/forgot-password' && method === 'POST') {
+      return await handleForgotPassword(event, requestId, logContext);
+    }
+    
+    if (path === '/api/auth/reset-password' && method === 'POST') {
+      return await handleResetPassword(event, requestId, logContext);
+    }
+    
+    if (path.startsWith('/api/auth/therapist/status/') && method === 'GET') {
+      const uid = path.split('/').pop();
+      return await handleTherapistStatus(uid!, requestId, logContext);
+    }
+
+    return errorResponse(404, 'Route not found', requestId);
+
+  } catch (error: any) {
+    logger.error('Unhandled error in auth handler', logContext, error);
+    return errorResponse(500, 'Internal server error', requestId);
+  }
+};
+
+/**
+ * Register User - Cognito + Database Integration
+ * Professional healthcare registration workflow
+ */
+async function handleRegister(
+  event: APIGatewayProxyEvent, 
+  requestId: string, 
+  logContext: any
+): Promise<APIGatewayProxyResult> {
+  const monitor = new PerformanceMonitor(logger, 'register_user', logContext);
+  
+  try {
+    const body = JSON.parse(event.body || '{}');
+    const {
+      email,
+      password,
+      first_name,
+      last_name,
+      role,
+      organization_id,
+      phone_number
+    } = body;
+
+    // Validation
+    if (!email || !password || !first_name || !last_name) {
+      monitor.end(false);
+      return validationErrorResponse([
+        { field: 'email', message: 'Email is required' },
+        { field: 'password', message: 'Password is required' },
+        { field: 'first_name', message: 'First name is required' },
+        { field: 'last_name', message: 'Last name is required' }
+      ], requestId);
+    }
+
+    // 1. Check if user exists in our database
+    const existingUser = await queryOne(
+      `SELECT id, email, phone_number FROM users 
+       WHERE email = $1 OR ($2::text IS NOT NULL AND phone_number = $2)`,
+      [email, phone_number || null]
+    );
+
+    if (existingUser) {
+      monitor.end(false);
+      return errorResponse(409, 'User already exists', requestId);
+    }
+
+    // 2. Register with Cognito (handles password validation)
+    const cognitoResult = await cognitoRegister(
+      email,
+      password,
+      first_name,
+      last_name,
+      role || 'client',
+      phone_number
+    );
+
+    // 3. Create user in our database with Cognito sub
+    let accountStatus = 'active';
+    let verificationStage = null;
+
+    if (role === 'therapist') {
+      accountStatus = 'onboarding_pending';
+      verificationStage = 'account_created';
+    }
+
+    const newUser = await queryOne(
+      `INSERT INTO users (
+        email, auth_provider_id, auth_provider_type, auth_provider_metadata,
+        firebase_uid, first_name, last_name, role, organization_id, phone_number,
+        account_status, verification_stage, is_active, signup_source, signup_platform,
+        auth_methods, email_verified, created_at, updated_at
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW(), NOW()
+      ) RETURNING id, email, first_name, last_name, role, account_status, auth_provider_id, auth_provider_type`,
+      [
+        email,
+        cognitoResult.userSub,
+        'cognito',
+        JSON.stringify({
+          created_via: 'registration',
+          cognito_sub: cognitoResult.userSub,
+          registration_date: new Date().toISOString()
+        }),
+        cognitoResult.userSub, // Legacy compatibility
+        first_name,
+        last_name,
+        role || 'client',
+        organization_id || null,
+        phone_number,
+        accountStatus,
+        verificationStage,
+        accountStatus === 'active',
+        'email_password',
+        'web',
+        JSON.stringify(['cognito']),
+        !cognitoResult.needsVerification
+      ]
+    );
+
+    monitor.end(true, { userId: newUser.id, cognitoSub: cognitoResult.userSub });
+    
+    // Return response indicating if email verification is needed
+    return successResponse({
+      user: {
+        ...newUser,
+        id: newUser.id
+      },
+      needsVerification: cognitoResult.needsVerification,
+      message: cognitoResult.needsVerification 
+        ? 'Please check your email for verification code'
+        : 'Registration successful'
+    }, 'User registered successfully', requestId);
+
+  } catch (error: any) {
+    logger.error('Registration error', logContext, error);
+    monitor.end(false);
+    
+    if (error.message.includes('already exists')) {
+      return errorResponse(409, 'User already exists', requestId);
+    }
+    if (error.message.includes('password')) {
+      return errorResponse(400, error.message, requestId);
+    }
+    
+    return errorResponse(500, 'Registration failed', requestId);
+  }
+}
+
+/**
+ * Login User - Cognito Authentication
+ * Professional healthcare login workflow
+ */
+async function handleLogin(
+  event: APIGatewayProxyEvent, 
+  requestId: string, 
+  logContext: any
+): Promise<APIGatewayProxyResult> {
+  const monitor = new PerformanceMonitor(logger, 'login_user', logContext);
+  
+  try {
+    const body = JSON.parse(event.body || '{}');
+    const { email, password } = body;
+
+    if (!email || !password) {
+      monitor.end(false);
+      return validationErrorResponse([
+        { field: 'email', message: 'Email is required' },
+        { field: 'password', message: 'Password is required' }
+      ], requestId);
+    }
+
+    // 1. Authenticate with Cognito
+    const cognitoResult = await cognitoAuth(email, password);
+
+    // 2. Get user from our database using Cognito sub
+    let user = await queryOne(
+      `SELECT * FROM users WHERE auth_provider_id = $1 AND auth_provider_type = $2`,
+      [cognitoResult.user.sub, 'cognito']
+    );
+
+    // 3. If user not found by Cognito sub, try by email (migration case)
+    if (!user) {
+      user = await queryOne(
+        `SELECT * FROM users WHERE email = $1`,
+        [email]
+      );
+
+      // Update user with Cognito sub for future logins
+      if (user) {
+        await query(
+          `UPDATE users SET 
+           auth_provider_id = $1, 
+           auth_provider_type = $2,
+           auth_provider_metadata = $3,
+           firebase_uid = $4,
+           updated_at = NOW()
+           WHERE id = $5`,
+          [
+            cognitoResult.user.sub,
+            'cognito',
+            JSON.stringify({
+              migrated_from: user.firebase_uid ? 'firebase' : 'email_only',
+              migration_date: new Date().toISOString(),
+              cognito_sub: cognitoResult.user.sub
+            }),
+            cognitoResult.user.sub, // Legacy compatibility
+            user.id
+          ]
+        );
+      }
+    }
+
+    if (!user) {
+      monitor.end(false);
+      return errorResponse(401, 'User not found in system', requestId);
+    }
+
+    // 4. Generate our internal JWT token (for compatibility)
+    const token = generateToken(user.id, user.email, user.role);
+
+    // 5. Update last_login_at (async)
+    query(
+      `UPDATE users SET last_login_at = NOW() WHERE id = $1`,
+      [user.id]
+    ).catch(err => logger.error('Failed to update last login', logContext, err));
+
+    monitor.end(true, { userId: user.id });
+
+    // Same response format as before for frontend compatibility
+    return successResponse({
+      token, // Our internal JWT
+      cognitoTokens: {
+        accessToken: cognitoResult.accessToken,
+        idToken: cognitoResult.idToken,
+        refreshToken: cognitoResult.refreshToken
+      },
+      user: {
+        id: user.id,
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        role: user.role,
+        organization_id: user.organization_id,
+        account_status: user.account_status || 'active',
+        verification_stage: user.verification_stage,
+        is_active: user.is_active,
+        onboardingStatus: user.account_status || 'active' // Frontend compatibility
+      }
+    }, 'Login successful', requestId);
+
+  } catch (error: any) {
+    logger.error('Login error', logContext, error);
+    monitor.end(false);
+    
+    if (error.message.includes('Invalid email or password')) {
+      return errorResponse(401, 'Invalid email or password', requestId);
+    }
+    if (error.message.includes('verify your email')) {
+      return errorResponse(401, 'Please verify your email address', requestId);
+    }
+    
+    return errorResponse(500, 'Login failed', requestId);
+  }
+}
+
+/**
+ * Confirm Email Verification - Cognito
+ * Required after registration for email verification
+ */
+async function handleConfirmSignUp(
+  event: APIGatewayProxyEvent, 
+  requestId: string, 
+  logContext: any
+): Promise<APIGatewayProxyResult> {
+  const monitor = new PerformanceMonitor(logger, 'confirm_signup', logContext);
+  
+  try {
+    const body = JSON.parse(event.body || '{}');
+    const { email, confirmationCode } = body;
+
+    if (!email || !confirmationCode) {
+      monitor.end(false);
+      return validationErrorResponse([
+        { field: 'email', message: 'Email is required' },
+        { field: 'confirmationCode', message: 'Confirmation code is required' }
+      ], requestId);
+    }
+
+    // Confirm with Cognito
+    await confirmSignUp(email, confirmationCode);
+
+    // Update user in our database
+    await query(
+      `UPDATE users SET email_verified = true, is_active = true, updated_at = NOW() WHERE email = $1`,
+      [email]
+    );
+
+    monitor.end(true);
+    
+    return successResponse({
+      verified: true
+    }, 'Email verified successfully', requestId);
+
+  } catch (error: any) {
+    logger.error('Email confirmation error', logContext, error);
+    monitor.end(false);
+    return errorResponse(400, error.message, requestId);
+  }
+}
+
+/**
+ * Resend Confirmation Code - Cognito
+ */
+async function handleResendCode(
+  event: APIGatewayProxyEvent, 
+  requestId: string, 
+  logContext: any
+): Promise<APIGatewayProxyResult> {
+  const monitor = new PerformanceMonitor(logger, 'resend_code', logContext);
+  
+  try {
+    const body = JSON.parse(event.body || '{}');
+    const { email } = body;
+
+    if (!email) {
+      monitor.end(false);
+      return validationErrorResponse([
+        { field: 'email', message: 'Email is required' }
+      ], requestId);
+    }
+
+    await resendConfirmationCode(email);
+
+    monitor.end(true);
+    
+    return successResponse({
+      sent: true
+    }, 'Confirmation code sent', requestId);
+
+  } catch (error: any) {
+    logger.error('Resend code error', logContext, error);
+    monitor.end(false);
+    return errorResponse(400, error.message, requestId);
+  }
+}
+
+/**
+ * Forgot Password - Cognito
+ */
+async function handleForgotPassword(
+  event: APIGatewayProxyEvent, 
+  requestId: string, 
+  logContext: any
+): Promise<APIGatewayProxyResult> {
+  const monitor = new PerformanceMonitor(logger, 'forgot_password', logContext);
+  
+  try {
+    const body = JSON.parse(event.body || '{}');
+    const { email } = body;
+
+    if (!email) {
+      monitor.end(false);
+      return validationErrorResponse([
+        { field: 'email', message: 'Email is required' }
+      ], requestId);
+    }
+
+    await forgotPassword(email);
+
+    monitor.end(true);
+    
+    return successResponse({
+      sent: true
+    }, 'Password reset code sent to your email', requestId);
+
+  } catch (error: any) {
+    logger.error('Forgot password error', logContext, error);
+    monitor.end(false);
+    return errorResponse(400, error.message, requestId);
+  }
+}
+
+/**
+ * Reset Password - Cognito
+ */
+async function handleResetPassword(
+  event: APIGatewayProxyEvent, 
+  requestId: string, 
+  logContext: any
+): Promise<APIGatewayProxyResult> {
+  const monitor = new PerformanceMonitor(logger, 'reset_password', logContext);
+  
+  try {
+    const body = JSON.parse(event.body || '{}');
+    const { email, confirmationCode, newPassword } = body;
+
+    if (!email || !confirmationCode || !newPassword) {
+      monitor.end(false);
+      return validationErrorResponse([
+        { field: 'email', message: 'Email is required' },
+        { field: 'confirmationCode', message: 'Confirmation code is required' },
+        { field: 'newPassword', message: 'New password is required' }
+      ], requestId);
+    }
+
+    await confirmForgotPassword(email, confirmationCode, newPassword);
+
+    monitor.end(true);
+    
+    return successResponse({
+      reset: true
+    }, 'Password reset successfully', requestId);
+
+  } catch (error: any) {
+    logger.error('Reset password error', logContext, error);
+    monitor.end(false);
+    return errorResponse(400, error.message, requestId);
+  }
+}
+
+/**
+ * Get Therapist Status - Updated for Cognito
+ */
+async function handleTherapistStatus(
+  cognitoSub: string, 
+  requestId: string, 
+  logContext: any
+): Promise<APIGatewayProxyResult> {
+  const monitor = new PerformanceMonitor(logger, 'get_therapist_status', { ...logContext, cognitoSub });
+  
+  try {
+    // 1. Check temp registration first (using auth_provider_id)
+    const registration = await queryOne(
+      `SELECT * FROM temp_therapist_registrations 
+       WHERE (auth_provider_id = $1 AND auth_provider_type = $2) OR firebase_uid = $3`,
+      [cognitoSub, 'cognito', cognitoSub]
+    );
+
+    if (!registration) {
+      // Check if user exists in users table
+      const user = await queryOne(
+        `SELECT * FROM users 
+         WHERE (auth_provider_id = $1 AND auth_provider_type = $2) OR firebase_uid = $3`,
+        [cognitoSub, 'cognito', cognitoSub]
+      );
+
+      if (user) {
+        monitor.end(true, { userId: user.id, status: 'approved' });
+        return successResponse({
+          success: true,
+          status: 'approved',
+          user: {
+            ...user,
+            id: user.id
+          },
+          can_login: true,
+          message: 'Account is active'
+        }, 'Status retrieved', requestId);
+      }
+
+      monitor.end(false);
+      return errorResponse(404, 'Registration not found', requestId);
+    }
+
+    // 2. Map status to frontend expected format
+    monitor.end(true, { registrationId: registration.id, status: registration.registration_status });
+    
+    return successResponse({
+      success: true,
+      status: registration.registration_status || 'pending',
+      registration: {
+        id: registration.id,
+        status: registration.registration_status,
+        workflow_stage: registration.workflow_stage,
+        background_check_status: registration.background_check_status,
+        can_login: registration.registration_status === 'approved',
+        message: registration.deletion_reason || 'Application under review'
+      },
+      can_login: registration.registration_status === 'approved',
+      message: registration.deletion_reason || 'Verification in progress'
+    }, 'Status retrieved', requestId);
+
+  } catch (error: any) {
+    logger.error('Get therapist status error', logContext, error);
+    monitor.end(false);
+    return errorResponse(500, 'Failed to get status', requestId);
+  }
+}

@@ -1,0 +1,258 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Ataraxia-Next - Modern serverless backend with your proven business logic
+
+Parameters:
+  Environment:
+    Type: String
+    Default: local
+    AllowedValues: [local, dev, staging, prod]
+    Description: Environment name for deployment
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Runtime: nodejs18.x
+    Environment:
+      Variables:
+        NODE_ENV: !Ref Environment
+        LOG_LEVEL: debug
+        # Database connection (same as your current backend)
+        DATABASE_URL: "postgresql://app_user:ChangeMe123!@dev-db-cluster.cluster-cliy2m6q8h4h.us-west-2.rds.amazonaws.com:5432/ataraxia_db?schema=ataraxia"
+        # JWT Secret (same as your current backend)
+        JWT_SECRET: "your_jwt_secret_key_change_in_production"
+        # Frontend compatibility
+        FRONTEND_URL: "http://localhost:3000"
+        CORS_ORIGINS: "http://localhost:3000,http://localhost:3001"
+        # Cognito configuration (Healthcare-focused)
+        COGNITO_USER_POOL_ID: !Ref AtaraxiaCognitoUserPool
+        COGNITO_CLIENT_ID: !Ref AtaraxiaCognitoUserPoolClient
+        COGNITO_REGION: !Ref AWS::Region
+  
+  Api:
+    Cors:
+      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Request-ID'"
+      AllowOrigin: "'*'"
+
+Resources:
+  # Cognito User Pool for Healthcare Authentication
+  AtaraxiaCognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub "ataraxia-therapy-${Environment}"
+      AliasAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      EmailConfiguration:
+        EmailSendingAccount: COGNITO_DEFAULT
+      EmailVerificationMessage: "Your Ataraxia verification code is {####}"
+      EmailVerificationSubject: "Ataraxia - Verify your email"
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          TemporaryPasswordValidityDays: 7
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+        - Name: given_name
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+        - Name: family_name
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+        - Name: phone_number
+          AttributeDataType: String
+          Required: false
+          Mutable: true
+        - Name: role
+          AttributeDataType: String
+          Required: false
+          Mutable: true
+        - Name: license_number
+          AttributeDataType: String
+          Required: false
+          Mutable: true
+        - Name: verification_status
+          AttributeDataType: String
+          Required: false
+          Mutable: true
+      UserPoolTags:
+        Environment: !Ref Environment
+        Application: Ataraxia
+        Purpose: Healthcare-Authentication
+
+  # Cognito User Pool Client
+  AtaraxiaCognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub "ataraxia-therapy-client-${Environment}"
+      UserPoolId: !Ref AtaraxiaCognitoUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+      PreventUserExistenceErrors: ENABLED
+      SupportedIdentityProviders:
+        - COGNITO
+      ReadAttributes:
+        - email
+        - given_name
+        - family_name
+        - phone_number
+        - custom:role
+        - custom:license_number
+        - custom:verification_status
+      WriteAttributes:
+        - email
+        - given_name
+        - family_name
+        - phone_number
+        - custom:role
+        - custom:license_number
+        - custom:verification_status
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 30
+
+  # Cognito User Groups for Role-Based Access
+  TherapistGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: therapists
+      Description: Licensed therapists with verification
+      UserPoolId: !Ref AtaraxiaCognitoUserPool
+      Precedence: 1
+
+  ClientGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: clients
+      Description: Therapy clients
+      UserPoolId: !Ref AtaraxiaCognitoUserPool
+      Precedence: 2
+
+  AdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: admins
+      Description: System administrators
+      UserPoolId: !Ref AtaraxiaCognitoUserPool
+      Precedence: 0
+
+  # API Gateway
+  AtaraxiaApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Environment
+      Name: !Sub "ataraxia-next-api-${Environment}"
+      Description: Ataraxia Next API with your proven business logic
+
+  # Auth Lambda Function (converted from your auth-service)
+  AuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Environment}-ataraxia-auth"
+      CodeUri: dist/lambdas/auth/
+      Handler: handler.handler
+      Description: Authentication service with your exact business logic
+      Environment:
+        Variables:
+          SERVICE_NAME: auth-service
+      Events:
+        # Exact same API endpoints as your Express server
+        Register:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/auth/register
+            Method: POST
+        Login:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/auth/login
+            Method: POST
+        ConfirmSignUp:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/auth/confirm
+            Method: POST
+        ResendCode:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/auth/resend-code
+            Method: POST
+        ForgotPassword:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/auth/forgot-password
+            Method: POST
+        ResetPassword:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/auth/reset-password
+            Method: POST
+        TherapistStatus:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/auth/therapist/status/{cognitoSub}
+            Method: GET
+        # CORS preflight
+        AuthOptions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/auth/{proxy+}
+            Method: OPTIONS
+
+Outputs:
+  ApiGatewayEndpoint:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${AtaraxiaApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+    Export:
+      Name: !Sub "${Environment}-ataraxia-api-endpoint"
+  
+  AuthFunctionArn:
+    Description: "Auth Lambda Function ARN"
+    Value: !GetAtt AuthFunction.Arn
+    Export:
+      Name: !Sub "${Environment}-auth-function-arn"
+
+  CognitoUserPoolId:
+    Description: "Cognito User Pool ID for healthcare authentication"
+    Value: !Ref AtaraxiaCognitoUserPool
+    Export:
+      Name: !Sub "${Environment}-cognito-user-pool-id"
+
+  CognitoClientId:
+    Description: "Cognito User Pool Client ID"
+    Value: !Ref AtaraxiaCognitoUserPoolClient
+    Export:
+      Name: !Sub "${Environment}-cognito-client-id"
+
+  CognitoUserPoolArn:
+    Description: "Cognito User Pool ARN"
+    Value: !GetAtt AtaraxiaCognitoUserPool.Arn
+    Export:
+      Name: !Sub "${Environment}-cognito-user-pool-arn"
