@@ -71,3 +71,4 @@ env-backup-*/
 .Trashes
 ehthumbs.db
 Thumbs.db
+infrastructure/cdk.out
