@@ -19,7 +19,7 @@ const WS_URL = 'ws://localhost:3012';
 
 async function testCompleteDeploymentSystem() {
     console.log('🧪 Testing Complete Deployment System...\n');
-    
+
     let testResults = {
         dashboard: false,
         api: false,
@@ -27,12 +27,12 @@ async function testCompleteDeploymentSystem() {
         database: false,
         endpoints: []
     };
-    
+
     // Test 1: Dashboard Accessibility
     console.log('🔍 Test 1: Dashboard Accessibility...');
     try {
         const response = await axios.get(DASHBOARD_URL, { timeout: 5000 });
-        if (response.status === 200 && response.data.includes('Ataraxia Deployment Dashboard')) {
+        if (response.status === 200 && (response.data.includes('Ataraxia Deployment Dashboard') || response.data.includes('Ataraxia Deployment Command Center'))) {
             console.log('✅ Dashboard is accessible and serving HTML');
             testResults.dashboard = true;
         } else {
@@ -41,7 +41,7 @@ async function testCompleteDeploymentSystem() {
     } catch (error) {
         console.log(`❌ Dashboard not accessible: ${error.message}`);
     }
-    
+
     // Test 2: API Status Endpoint
     console.log('\n🔍 Test 2: API Status Endpoint...');
     try {
@@ -60,25 +60,25 @@ async function testCompleteDeploymentSystem() {
     } catch (error) {
         console.log(`❌ API status endpoint failed: ${error.message}`);
     }
-    
+
     // Test 3: WebSocket Connectivity
     console.log('\n🔍 Test 3: WebSocket Connectivity...');
     try {
         await new Promise((resolve, reject) => {
             const ws = new WebSocket(WS_URL);
             let messageReceived = false;
-            
+
             const timeout = setTimeout(() => {
                 ws.close();
                 if (!messageReceived) {
                     reject(new Error('WebSocket timeout - no initial message received'));
                 }
             }, 5000);
-            
+
             ws.on('open', () => {
                 console.log('✅ WebSocket connection established');
             });
-            
+
             ws.on('message', (data) => {
                 try {
                     const message = JSON.parse(data);
@@ -94,12 +94,12 @@ async function testCompleteDeploymentSystem() {
                     console.log('⚠️  WebSocket message parsing error');
                 }
             });
-            
+
             ws.on('error', (error) => {
                 clearTimeout(timeout);
                 reject(error);
             });
-            
+
             ws.on('close', () => {
                 if (messageReceived) {
                     resolve();
@@ -109,21 +109,21 @@ async function testCompleteDeploymentSystem() {
     } catch (error) {
         console.log(`❌ WebSocket test failed: ${error.message}`);
     }
-    
+
     // Test 4: API Endpoint Testing
     console.log('\n🔍 Test 4: API Endpoint Testing...');
     try {
-        const response = await axios.post(`${DASHBOARD_URL}/api/test-endpoints`, {}, { 
-            timeout: 30000 
+        const response = await axios.post(`${DASHBOARD_URL}/api/test-endpoints`, {}, {
+            timeout: 30000
         });
-        
+
         if (response.status === 200 && response.data.success) {
             console.log('✅ API endpoint testing completed');
             testResults.endpoints = response.data.results;
-            
+
             const successCount = response.data.results.filter(r => r.success).length;
             console.log(`   Results: ${successCount}/${response.data.results.length} endpoints passed`);
-            
+
             response.data.results.forEach(result => {
                 const status = result.success ? '✅' : '❌';
                 const time = result.responseTime ? `${result.responseTime}ms` : 'N/A';
@@ -135,7 +135,7 @@ async function testCompleteDeploymentSystem() {
     } catch (error) {
         console.log(`❌ API endpoint testing error: ${error.message}`);
     }
-    
+
     // Test 5: Process Management API
     console.log('\n🔍 Test 5: Process Management API...');
     try {
@@ -150,7 +150,7 @@ async function testCompleteDeploymentSystem() {
     } catch (error) {
         console.log(`❌ Process management API failed: ${error.message}`);
     }
-    
+
     // Test 6: Deployment Logs API
     console.log('\n🔍 Test 6: Deployment Logs API...');
     try {
@@ -162,12 +162,12 @@ async function testCompleteDeploymentSystem() {
     } catch (error) {
         console.log(`❌ Deployment logs API failed: ${error.message}`);
     }
-    
+
     // Summary
     console.log('\n' + '='.repeat(60));
     console.log('📊 DEPLOYMENT SYSTEM TEST SUMMARY');
     console.log('='.repeat(60));
-    
+
     const tests = [
         { name: 'Dashboard Accessibility', passed: testResults.dashboard },
         { name: 'API Status Endpoint', passed: testResults.api },
@@ -175,23 +175,23 @@ async function testCompleteDeploymentSystem() {
         { name: 'Database Connectivity', passed: testResults.database },
         { name: 'API Endpoint Testing', passed: testResults.endpoints.length > 0 }
     ];
-    
+
     const passedTests = tests.filter(t => t.passed).length;
-    
+
     console.log(`✅ Passed: ${passedTests}/${tests.length} tests`);
     console.log(`❌ Failed: ${tests.length - passedTests}/${tests.length} tests`);
     console.log('');
-    
+
     tests.forEach(test => {
         const status = test.passed ? '✅' : '❌';
         console.log(`${status} ${test.name}`);
     });
-    
+
     if (testResults.endpoints.length > 0) {
         const apiSuccessCount = testResults.endpoints.filter(r => r.success).length;
         console.log(`\n🌐 API Endpoints: ${apiSuccessCount}/${testResults.endpoints.length} working`);
     }
-    
+
     console.log('\n🎯 Next Steps:');
     if (testResults.dashboard && testResults.api && testResults.websocket) {
         console.log('✅ Deployment dashboard is fully functional!');
@@ -204,7 +204,7 @@ async function testCompleteDeploymentSystem() {
         if (!testResults.websocket) console.log('   - Fix WebSocket connectivity');
         if (!testResults.database) console.log('   - Fix database connectivity');
     }
-    
+
     return passedTests === tests.length;
 }
 

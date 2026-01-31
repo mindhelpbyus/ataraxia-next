@@ -1,14 +1,17 @@
 /**
- * Client Lambda Handler
+ * Fixed Client Lambda Handler
  * 
- * Handles all client-related operations including:
- * - Profile management
- * - Preferences
- * - History and records
+ * Provides comprehensive Client management with full CRUD:
+ * - Profile Management (Personal, Contact, Emergency)
+ * - Medical History (Conditions, Medications, Allergies)
+ * - Insurance Data (Primary, Secondary)
+ * - Safety Assessments (Risk Level, Flags)
+ * - Treatment Plans and Consents
  */
 
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { query, queryOne } from '../../lib/database';
+import { getPrisma } from '../../lib/prisma';
+import { Prisma } from '@prisma/client';
 import { createLogger, PerformanceMonitor } from '../../shared/logger';
 import { successResponse, errorResponse, validationErrorResponse } from '../../shared/response';
 
@@ -18,7 +21,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
   const requestId = event.requestContext.requestId;
   const path = event.path;
   const method = event.httpMethod;
-  
+
   const logContext = {
     requestId,
     path,
@@ -35,24 +38,52 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       return successResponse({}, 'CORS preflight', requestId);
     }
 
-    // Route to appropriate handler
+    // --- READ OPERATIONS ---
+
     if (path === '/api/client' && method === 'GET') {
       return await handleGetAllClients(event, requestId, logContext);
     }
-    
-    if (path.match(/^\/api\/client\/\d+$/) && method === 'GET') {
-      const clientId = path.split('/').pop();
-      return await handleGetClient(clientId!, requestId, logContext);
+
+    const idMatch = path.match(/^\/api\/client\/(\d+)$/);
+    if (idMatch && method === 'GET') {
+      return await handleGetClient(idMatch[1], requestId, logContext);
     }
-    
-    if (path.match(/^\/api\/client\/\d+$/) && method === 'PUT') {
-      const clientId = path.split('/').pop();
-      return await handleUpdateClient(clientId!, event, requestId, logContext);
+
+    // --- WRITE OPERATIONS ---
+
+    // Update Profile
+    if (idMatch && method === 'PUT') {
+      return await handleUpdateClient(idMatch[1], event, requestId, logContext);
     }
-    
-    if (path.match(/^\/api\/client\/\d+\/preferences$/) && method === 'PUT') {
-      const clientId = path.split('/').pop()?.replace('/preferences', '');
-      return await handleUpdatePreferences(clientId!, event, requestId, logContext);
+
+    // Update Medical History
+    const historyMatch = path.match(/^\/api\/client\/(\d+)\/medical-history$/);
+    if (historyMatch && method === 'PUT') {
+      return await handleUpdateMedicalHistory(historyMatch[1], event, requestId, logContext);
+    }
+
+    // Update Insurance
+    const insuranceMatch = path.match(/^\/api\/client\/(\d+)\/insurance$/);
+    if (insuranceMatch && method === 'PUT') {
+      return await handleUpdateInsurance(insuranceMatch[1], event, requestId, logContext);
+    }
+
+    // Update Safety Assessment
+    const safetyMatch = path.match(/^\/api\/client\/(\d+)\/safety-assessment$/);
+    if (safetyMatch && method === 'PUT') {
+      return await handleUpdateSafetyAssessment(safetyMatch[1], event, requestId, logContext);
+    }
+
+    // Update Consents
+    const consentsMatch = path.match(/^\/api\/client\/(\d+)\/consents$/);
+    if (consentsMatch && method === 'PUT') {
+      return await handleUpdateConsents(consentsMatch[1], event, requestId, logContext);
+    }
+
+    // --- DELETE OPERATIONS ---
+
+    if (idMatch && method === 'DELETE') {
+      return await handleDeleteClient(idMatch[1], requestId, logContext);
     }
 
     return errorResponse(404, 'Route not found', requestId);
@@ -72,58 +103,68 @@ async function handleGetAllClients(
   logContext: any
 ): Promise<APIGatewayProxyResult> {
   const monitor = new PerformanceMonitor(logger, 'get_all_clients', logContext);
-  
+  const prisma = getPrisma();
+
   try {
     const { status, search } = event.queryStringParameters || {};
 
-    let sql = `
-      SELECT 
-        u.id, 
-        u.first_name, 
-        u.last_name, 
-        u.email, 
-        u.phone_number, 
-        u.account_status, 
-        u.profile_image_url,
-        u.created_at,
-        cp.*,
-        o.name as organization_name
-      FROM users u
-      INNER JOIN clients cp ON u.id = cp.user_id
-      LEFT JOIN organizations o ON u.organization_id = o.id
-      WHERE u.role = 'client'
-    `;
+    const whereClause: any = {
+      role: 'client',
+      account_status: status || 'active'
+    };
 
-    const params: any[] = [];
-    let paramIndex = 1;
-
-    // Add status filter if provided
-    if (status) {
-      sql += ` AND u.account_status = $${paramIndex}`;
-      params.push(status);
-      paramIndex++;
-    }
-
-    // Add search filter if provided
     if (search) {
-      sql += ` AND (
-        LOWER(u.first_name) LIKE LOWER($${paramIndex}) OR 
-        LOWER(u.last_name) LIKE LOWER($${paramIndex}) OR 
-        LOWER(u.email) LIKE LOWER($${paramIndex})
-      )`;
-      params.push(`%${search}%`);
-      paramIndex++;
+      whereClause.OR = [
+        { first_name: { contains: search, mode: 'insensitive' } },
+        { last_name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } }
+      ];
     }
 
-    sql += ` ORDER BY u.created_at DESC`;
+    const clients = await prisma.users.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        first_name: true,
+        last_name: true,
+        email: true,
+        phone_number: true,
+        account_status: true,
+        profile_image_url: true,
+        created_at: true,
+        clients_clients_user_idTousers: {
+          select: {
+            date_of_birth: true,
+            city: true,
+            state: true,
+            status: true,
+            safety_risk_level: true
+          }
+        }
+      },
+      orderBy: { created_at: 'desc' }
+    });
 
-    const clients = await query(sql, params);
+    const flattenedClients = clients.map(u => ({
+      id: u.id.toString(),
+      first_name: u.first_name,
+      last_name: u.last_name,
+      email: u.email,
+      phone_number: u.phone_number,
+      account_status: u.account_status,
+      profile_image_url: u.profile_image_url,
+      created_at: u.created_at,
+      date_of_birth: u.clients_clients_user_idTousers?.date_of_birth,
+      location: u.clients_clients_user_idTousers?.city ? `${u.clients_clients_user_idTousers.city}, ${u.clients_clients_user_idTousers.state}` : '',
+      status: u.clients_clients_user_idTousers?.status,
+      risk_level: u.clients_clients_user_idTousers?.safety_risk_level
+    }));
 
-    monitor.end(true, { count: clients.length });
-    
+    monitor.end(true, { count: flattenedClients.length });
+
     return successResponse({
-      clients,
-      total: clients.length
+      clients: flattenedClients,
+      total: flattenedClients.length
     }, 'Clients retrieved successfully', requestId);
 
   } catch (error: any) {
@@ -134,7 +175,7 @@ async function handleGetAllClients(
 }
 
 /**
- * Get single client by ID
+ * Get Client Detail
  */
 async function handleGetClient(
   clientId: string,
@@ -142,36 +183,71 @@ async function handleGetClient(
   logContext: any
 ): Promise<APIGatewayProxyResult> {
   const monitor = new PerformanceMonitor(logger, 'get_client', { ...logContext, clientId });
-  
-  try {
-    const client = await queryOne(`
-      SELECT 
-        u.id, 
-        u.first_name, 
-        u.last_name, 
-        u.email, 
-        u.phone_number, 
-        u.account_status, 
-        u.profile_image_url,
-        u.created_at,
-        cp.*,
-        o.name as organization_name
-      FROM users u
-      INNER JOIN clients cp ON u.id = cp.user_id
-      LEFT JOIN organizations o ON u.organization_id = o.id
-      WHERE u.id = $1 AND u.role = 'client'
-    `, [clientId]);
+  const prisma = getPrisma();
 
-    if (!client) {
+  try {
+    const clientUser = await prisma.users.findUnique({
+      where: { id: BigInt(clientId) },
+      include: {
+        clients_clients_user_idTousers: true,
+        organizations_users_organization_idToorganizations: true
+      }
+    });
+
+    if (!clientUser || clientUser.role !== 'client') {
       monitor.end(false);
       return errorResponse(404, 'Client not found', requestId);
     }
 
+    const cp = clientUser.clients_clients_user_idTousers || {} as any;
+
+    const transformedClient = {
+      id: clientUser.id.toString(),
+      first_name: clientUser.first_name,
+      last_name: clientUser.last_name,
+      email: clientUser.email,
+      phone_number: clientUser.phone_number,
+      account_status: clientUser.account_status,
+      profile_image_url: clientUser.profile_image_url,
+      created_at: clientUser.created_at,
+
+      // Client Profile Data
+      date_of_birth: cp.date_of_birth,
+      gender_identity: cp.gender_identity,
+      pronouns: cp.pronouns,
+      preferred_language: cp.preferred_language,
+      marital_status: cp.marital_status,
+      occupation: cp.occupation,
+
+      address: {
+        line1: cp.address_1,
+        line2: cp.address_2,
+        city: cp.city,
+        state: cp.state,
+        zip_code: cp.zip_code,
+        country: cp.country
+      },
+
+      // JSON Data
+      medical_history: cp.medical_history || {},
+      emergency_contact: cp.emergency_contact_json || {},
+      insurance_data: cp.insurance_data || {},
+      payment_method_id: cp.payment_method_id,
+
+      // Clinical
+      safety_risk_level: cp.safety_risk_level,
+      safety_risk_flags: cp.safety_risk_flags || [],
+      safety_plan_url: cp.safety_plan_url,
+      treatment_plan: cp.treatment_plan || {},
+      diagnoses: cp.diagnoses_structured || {},
+      medications: cp.medications_current || [],
+      consents: cp.consents_signed || {},
+
+      organization_name: clientUser.organizations_users_organization_idToorganizations?.name
+    };
+
     monitor.end(true);
-    
-    return successResponse({
-      client
-    }, 'Client retrieved successfully', requestId);
+    return successResponse({ client: transformedClient }, 'Client retrieved successfully', requestId);
 
   } catch (error: any) {
     logger.error('Get client error', logContext, error);
@@ -181,7 +257,7 @@ async function handleGetClient(
 }
 
 /**
- * Update client profile
+ * Update Client Profile
  */
 async function handleUpdateClient(
   clientId: string,
@@ -190,7 +266,8 @@ async function handleUpdateClient(
   logContext: any
 ): Promise<APIGatewayProxyResult> {
   const monitor = new PerformanceMonitor(logger, 'update_client', { ...logContext, clientId });
-  
+  const prisma = getPrisma();
+
   try {
     const body = JSON.parse(event.body || '{}');
     const {
@@ -198,94 +275,56 @@ async function handleUpdateClient(
       last_name,
       phone_number,
       profile_image_url,
-      emergency_contact_name,
-      emergency_contact_phone,
-      emergency_contact_relationship,
-      insurance_provider,
-      insurance_policy_number,
       date_of_birth,
-      gender,
+      gender_identity,
+      pronouns,
+      preferred_language,
       address,
       city,
       state,
-      zip_code
+      zip_code,
+      country,
+      emergency_contact
     } = body;
 
-    // Update user table
-    if (first_name || last_name || phone_number || profile_image_url) {
-      const userUpdates: string[] = [];
-      const userParams: any[] = [];
-      let paramIndex = 1;
+    const id = BigInt(clientId);
 
-      if (first_name) {
-        userUpdates.push(`first_name = $${paramIndex++}`);
-        userParams.push(first_name);
-      }
-      if (last_name) {
-        userUpdates.push(`last_name = $${paramIndex++}`);
-        userParams.push(last_name);
-      }
-      if (phone_number) {
-        userUpdates.push(`phone_number = $${paramIndex++}`);
-        userParams.push(phone_number);
-      }
-      if (profile_image_url) {
-        userUpdates.push(`profile_image_url = $${paramIndex++}`);
-        userParams.push(profile_image_url);
-      }
+    // Update User
+    const userUpdates: any = {};
+    if (first_name) userUpdates.first_name = first_name;
+    if (last_name) userUpdates.last_name = last_name;
+    if (phone_number) userUpdates.phone_number = phone_number;
+    if (profile_image_url) userUpdates.profile_image_url = profile_image_url;
 
-      userUpdates.push(`updated_at = NOW()`);
-      userParams.push(clientId);
-
-      await query(`
-        UPDATE users 
-        SET ${userUpdates.join(', ')}
-        WHERE id = $${paramIndex}
-      `, userParams);
+    if (Object.keys(userUpdates).length > 0) {
+      await prisma.users.update({
+        where: { id },
+        data: { ...userUpdates, updated_at: new Date() }
+      });
     }
 
-    // Update client profile
-    const clientFields = {
-      emergency_contact_name,
-      emergency_contact_phone,
-      emergency_contact_relationship,
-      insurance_provider,
-      insurance_policy_number,
-      date_of_birth,
-      gender,
-      address,
-      city,
-      state,
-      zip_code
-    };
+    // Update Client Profile
+    const clientUpdates: any = {};
+    if (date_of_birth) clientUpdates.date_of_birth = new Date(date_of_birth);
+    if (gender_identity) clientUpdates.gender_identity = gender_identity;
+    if (pronouns) clientUpdates.pronouns = pronouns;
+    if (preferred_language) clientUpdates.preferred_language = preferred_language;
+    if (address) clientUpdates.address_1 = address; // mapping 'address' to 'address_1'
+    if (city) clientUpdates.city = city;
+    if (state) clientUpdates.state = state;
+    if (zip_code) clientUpdates.zip_code = zip_code;
+    if (country) clientUpdates.country = country;
+    if (emergency_contact) clientUpdates.emergency_contact_json = emergency_contact;
 
-    const clientUpdates: string[] = [];
-    const clientParams: any[] = [];
-    let paramIndex = 1;
-
-    Object.entries(clientFields).forEach(([key, value]) => {
-      if (value !== undefined) {
-        clientUpdates.push(`${key} = $${paramIndex++}`);
-        clientParams.push(value);
-      }
-    });
-
-    if (clientUpdates.length > 0) {
-      clientUpdates.push(`updated_at = NOW()`);
-      clientParams.push(clientId);
-
-      await query(`
-        UPDATE clients 
-        SET ${clientUpdates.join(', ')}
-        WHERE user_id = $${paramIndex}
-      `, clientParams);
+    if (Object.keys(clientUpdates).length > 0) {
+      await prisma.clients.update({
+        where: { user_id: id },
+        data: { ...clientUpdates, updated_at: new Date() }
+      });
     }
 
     monitor.end(true);
-    
-    return successResponse({
-      message: 'Client profile updated successfully'
-    }, 'Profile updated', requestId);
+    return successResponse({ message: 'Client profile updated' }, 'Profile updated', requestId);
 
   } catch (error: any) {
     logger.error('Update client error', logContext, error);
@@ -295,80 +334,186 @@ async function handleUpdateClient(
 }
 
 /**
- * Update client preferences
+ * Update Medical History
  */
-async function handleUpdatePreferences(
+async function handleUpdateMedicalHistory(
   clientId: string,
   event: APIGatewayProxyEvent,
   requestId: string,
   logContext: any
 ): Promise<APIGatewayProxyResult> {
-  const monitor = new PerformanceMonitor(logger, 'update_preferences', { ...logContext, clientId });
-  
+  const monitor = new PerformanceMonitor(logger, 'update_medical_history', { ...logContext, clientId });
+  const prisma = getPrisma();
+
   try {
     const body = JSON.parse(event.body || '{}');
-    const {
-      preferred_session_format,
-      preferred_session_duration,
-      preferred_therapist_gender,
-      preferred_communication_method,
-      therapy_goals,
-      previous_therapy_experience,
-      current_medications,
-      mental_health_history,
-      crisis_plan
-    } = body;
+    const { medical_history, medications, diagnoses } = body;
 
-    const updates: string[] = [];
-    const params: any[] = [];
-    let paramIndex = 1;
+    if (!medical_history && !medications && !diagnoses) {
+      return validationErrorResponse('No medical history data provided', requestId);
+    }
 
-    const preferenceFields = {
-      preferred_session_format,
-      preferred_session_duration,
-      preferred_therapist_gender,
-      preferred_communication_method,
-      therapy_goals,
-      previous_therapy_experience,
-      current_medications,
-      mental_health_history,
-      crisis_plan
-    };
+    const updates: any = {};
+    if (medical_history) updates.medical_history = medical_history;
+    if (medications) updates.medications_current = medications; // JSON array
+    if (diagnoses) updates.diagnoses_structured = diagnoses;
 
-    Object.entries(preferenceFields).forEach(([key, value]) => {
-      if (value !== undefined) {
-        updates.push(`${key} = $${paramIndex++}`);
-        // JSON fields should be stringified
-        if (typeof value === 'object' && value !== null) {
-          params.push(JSON.stringify(value));
-        } else {
-          params.push(value);
-        }
+    await prisma.clients.update({
+      where: { user_id: BigInt(clientId) },
+      data: { ...updates, updated_at: new Date() }
+    });
+
+    monitor.end(true);
+    return successResponse({ message: 'Medical history updated' }, 'Medical history updated', requestId);
+
+  } catch (error: any) {
+    logger.error('Update medical history error', logContext, error);
+    monitor.end(false);
+    return errorResponse(500, 'Failed to update medical history', requestId);
+  }
+}
+
+/**
+ * Update Insurance Information
+ */
+async function handleUpdateInsurance(
+  clientId: string,
+  event: APIGatewayProxyEvent,
+  requestId: string,
+  logContext: any
+): Promise<APIGatewayProxyResult> {
+  const monitor = new PerformanceMonitor(logger, 'update_insurance', { ...logContext, clientId });
+  const prisma = getPrisma();
+
+  try {
+    const body = JSON.parse(event.body || '{}');
+    const { has_insurance, insurance_data } = body;
+
+    const updates: any = {};
+    if (has_insurance !== undefined) updates.has_insurance = has_insurance;
+    if (insurance_data) updates.insurance_data = insurance_data; // JSON
+
+    await prisma.clients.update({
+      where: { user_id: BigInt(clientId) },
+      data: { ...updates, updated_at: new Date() }
+    });
+
+    monitor.end(true);
+    return successResponse({ message: 'Insurance information updated' }, 'Insurance updated', requestId);
+
+  } catch (error: any) {
+    logger.error('Update insurance error', logContext, error);
+    monitor.end(false);
+    return errorResponse(500, 'Failed to update insurance', requestId);
+  }
+}
+
+/**
+ * Update Safety Assessment
+ */
+async function handleUpdateSafetyAssessment(
+  clientId: string,
+  event: APIGatewayProxyEvent,
+  requestId: string,
+  logContext: any
+): Promise<APIGatewayProxyResult> {
+  const monitor = new PerformanceMonitor(logger, 'update_safety', { ...logContext, clientId });
+  const prisma = getPrisma();
+
+  try {
+    const body = JSON.parse(event.body || '{}');
+    const { safety_risk_level, safety_risk_flags, safety_plan_url, assessment_scores } = body;
+
+    const updates: any = {};
+    if (safety_risk_level) updates.safety_risk_level = safety_risk_level;
+    if (safety_risk_flags) updates.safety_risk_flags = safety_risk_flags; // Array
+    if (safety_plan_url) updates.safety_plan_url = safety_plan_url;
+    if (assessment_scores) updates.assessment_scores = assessment_scores; // JSON
+
+    await prisma.clients.update({
+      where: { user_id: BigInt(clientId) },
+      data: { ...updates, updated_at: new Date() }
+    });
+
+    monitor.end(true);
+    return successResponse({ message: 'Safety assessment updated' }, 'Safety assessment updated', requestId);
+
+  } catch (error: any) {
+    logger.error('Update safety error', logContext, error);
+    monitor.end(false);
+    return errorResponse(500, 'Failed to update safety assessment', requestId);
+  }
+}
+
+/**
+ * Update Consents
+ */
+async function handleUpdateConsents(
+  clientId: string,
+  event: APIGatewayProxyEvent,
+  requestId: string,
+  logContext: any
+): Promise<APIGatewayProxyResult> {
+  const monitor = new PerformanceMonitor(logger, 'update_consents', { ...logContext, clientId });
+  const prisma = getPrisma();
+
+  try {
+    const body = JSON.parse(event.body || '{}');
+    const { consents_signed, signature_url } = body;
+
+    const updates: any = {};
+    if (consents_signed) updates.consents_signed = consents_signed; // JSON
+    if (signature_url) updates.signature_url = signature_url;
+
+    await prisma.clients.update({
+      where: { user_id: BigInt(clientId) },
+      data: { ...updates, updated_at: new Date() }
+    });
+
+    monitor.end(true);
+    return successResponse({ message: 'Consents updated' }, 'Consents updated', requestId);
+
+  } catch (error: any) {
+    logger.error('Update consents error', logContext, error);
+    monitor.end(false);
+    return errorResponse(500, 'Failed to update consents', requestId);
+  }
+}
+
+
+/**
+ * Soft Delete Client
+ */
+async function handleDeleteClient(
+  clientId: string,
+  requestId: string,
+  logContext: any
+): Promise<APIGatewayProxyResult> {
+  const monitor = new PerformanceMonitor(logger, 'delete_client', { ...logContext, clientId });
+  const prisma = getPrisma();
+
+  try {
+    await prisma.users.update({
+      where: { id: BigInt(clientId) },
+      data: {
+        account_status: 'deleted',
+        deleted_at: new Date(),
+        is_active: false
       }
     });
 
-    if (updates.length === 0) {
-      return validationErrorResponse('No preference data provided', requestId);
-    }
-
-    updates.push(`updated_at = NOW()`);
-    params.push(clientId);
-
-    await query(`
-      UPDATE clients 
-      SET ${updates.join(', ')}
-      WHERE user_id = $${paramIndex}
-    `, params);
+    // Also update client status
+    await prisma.clients.update({
+      where: { user_id: BigInt(clientId) },
+      data: { status: 'deleted' }
+    });
 
     monitor.end(true);
-    
-    return successResponse({
-      message: 'Preferences updated successfully'
-    }, 'Preferences updated', requestId);
+    return successResponse({ message: 'Client account deleted' }, 'Client deleted', requestId);
 
   } catch (error: any) {
-    logger.error('Update preferences error', logContext, error);
+    logger.error('Delete client error', logContext, error);
     monitor.end(false);
-    return errorResponse(500, 'Failed to update preferences', requestId);
+    return errorResponse(500, 'Failed to delete client', requestId);
   }
 }

@@ -77,7 +77,7 @@ export class AtaraxiaStack extends cdk.Stack {
   private createCognitoUserPool(environment: string): cognito.UserPool {
     return new cognito.UserPool(this, 'AtaraxiaUserPool', {
       userPoolName: `ataraxia-healthcare-${environment}`,
-      
+
       // Healthcare-specific sign-in configuration
       signInAliases: {
         email: true,
@@ -134,8 +134,8 @@ export class AtaraxiaStack extends cdk.Stack {
       deletionProtection: environment === 'prod',
 
       // Advanced security features
-      advancedSecurityMode: environment === 'prod' 
-        ? cognito.AdvancedSecurityMode.ENFORCED 
+      advancedSecurityMode: environment === 'prod'
+        ? cognito.AdvancedSecurityMode.ENFORCED
         : cognito.AdvancedSecurityMode.AUDIT,
 
       // Device tracking for security
@@ -168,7 +168,7 @@ export class AtaraxiaStack extends cdk.Stack {
 
       // Disable OAuth for healthcare privacy and simplicity
       generateSecret: false,
-      
+
       // Token validity
       accessTokenValidity: cdk.Duration.hours(1),
       idTokenValidity: cdk.Duration.hours(1),
@@ -295,6 +295,10 @@ export class AtaraxiaStack extends cdk.Stack {
   }
 
   private createAuthFunction(role: iam.Role, secrets: secretsmanager.Secret, environment: string): lambda.Function {
+    // Get DATABASE_URL from environment or use default dev value
+    const databaseUrl = process.env.DATABASE_URL ||
+      'postgresql://app_user:ChangeMe123!@dev-db-cluster.cluster-cliy2m6q8h4h.us-west-2.rds.amazonaws.com:5432/ataraxia_db?schema=ataraxia';
+
     return new lambda.Function(this, 'AtaraxiaAuthFunction', {
       functionName: `ataraxia-auth-${environment}`,
       runtime: lambda.Runtime.NODEJS_18_X,
@@ -310,16 +314,18 @@ export class AtaraxiaStack extends cdk.Stack {
         COGNITO_CLIENT_ID: this.userPoolClient.userPoolClientId,
         COGNITO_REGION: this.region,
         SECRETS_ARN: secrets.secretArn,
-        AUTH_PROVIDER_TYPE: 'cognito'
+        AUTH_PROVIDER_TYPE: 'cognito',
+        DATABASE_URL: databaseUrl,
+        DATABASE_SCHEMA: 'ataraxia'
       },
-      logRetention: environment === 'prod' 
-        ? logs.RetentionDays.ONE_MONTH 
+      logRetention: environment === 'prod'
+        ? logs.RetentionDays.ONE_MONTH
         : logs.RetentionDays.ONE_WEEK,
-      
+
       // Performance and monitoring
       reservedConcurrentExecutions: environment === 'prod' ? 100 : undefined,
       deadLetterQueueEnabled: true,
-      
+
       // Security
       allowPublicSubnet: false
     });
@@ -341,14 +347,14 @@ export class AtaraxiaStack extends cdk.Stack {
         DATABASE_SCHEMA: 'ataraxia',
         SECRETS_ARN: secrets.secretArn
       },
-      logRetention: environment === 'prod' 
-        ? logs.RetentionDays.ONE_MONTH 
+      logRetention: environment === 'prod'
+        ? logs.RetentionDays.ONE_MONTH
         : logs.RetentionDays.ONE_WEEK,
-      
+
       // Performance and monitoring
       reservedConcurrentExecutions: environment === 'prod' ? 50 : undefined,
       deadLetterQueueEnabled: true,
-      
+
       // Security
       allowPublicSubnet: false
     });
@@ -370,14 +376,14 @@ export class AtaraxiaStack extends cdk.Stack {
         DATABASE_SCHEMA: 'ataraxia',
         SECRETS_ARN: secrets.secretArn
       },
-      logRetention: environment === 'prod' 
-        ? logs.RetentionDays.ONE_MONTH 
+      logRetention: environment === 'prod'
+        ? logs.RetentionDays.ONE_MONTH
         : logs.RetentionDays.ONE_WEEK,
-      
+
       // Performance and monitoring
       reservedConcurrentExecutions: environment === 'prod' ? 50 : undefined,
       deadLetterQueueEnabled: true,
-      
+
       // Security
       allowPublicSubnet: false
     });
@@ -405,14 +411,14 @@ export class AtaraxiaStack extends cdk.Stack {
         CHECKR_API_KEY: 'placeholder', // TODO: Add to secrets
         STERLING_API_KEY: 'placeholder' // TODO: Add to secrets
       },
-      logRetention: environment === 'prod' 
+      logRetention: environment === 'prod'
         ? logs.RetentionDays.THREE_MONTHS // Longer retention for compliance
         : logs.RetentionDays.ONE_WEEK,
-      
+
       // Performance and monitoring
       reservedConcurrentExecutions: environment === 'prod' ? 25 : undefined,
       deadLetterQueueEnabled: true,
-      
+
       // Security
       allowPublicSubnet: false
     });
@@ -422,10 +428,10 @@ export class AtaraxiaStack extends cdk.Stack {
     const api = new apigateway.RestApi(this, 'AtaraxiaApi', {
       restApiName: `ataraxia-healthcare-api-${environment}`,
       description: 'Ataraxia Healthcare Platform API',
-      
+
       // CORS configuration for healthcare app
       defaultCorsPreflightOptions: {
-        allowOrigins: environment === 'prod' 
+        allowOrigins: environment === 'prod'
           ? ['https://app.ataraxia.health'] // Production domain
           : apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
@@ -474,7 +480,7 @@ export class AtaraxiaStack extends cdk.Stack {
   }
 
   private configureApiRoutes(
-    api: apigateway.RestApi, 
+    api: apigateway.RestApi,
     authFunction: lambda.Function,
     therapistFunction: lambda.Function,
     clientFunction: lambda.Function,
@@ -484,11 +490,11 @@ export class AtaraxiaStack extends cdk.Stack {
     const authIntegration = new apigateway.LambdaIntegration(authFunction, {
       requestTemplates: { 'application/json': '{ "statusCode": "200" }' }
     });
-    
+
     const therapistIntegration = new apigateway.LambdaIntegration(therapistFunction, {
       requestTemplates: { 'application/json': '{ "statusCode": "200" }' }
     });
-    
+
     const clientIntegration = new apigateway.LambdaIntegration(clientFunction, {
       requestTemplates: { 'application/json': '{ "statusCode": "200" }' }
     });
@@ -501,49 +507,49 @@ export class AtaraxiaStack extends cdk.Stack {
 
     // Auth routes
     const authResource = apiResource.addResource('auth');
-    
+
     // Authentication endpoints
     authResource.addResource('register').addMethod('POST', authIntegration);
     authResource.addResource('login').addMethod('POST', authIntegration);
     authResource.addResource('logout').addMethod('POST', authIntegration);
     authResource.addResource('me').addMethod('GET', authIntegration);
-    
+
     // Cognito-specific endpoints
     authResource.addResource('confirm').addMethod('POST', authIntegration);
     authResource.addResource('resend-code').addMethod('POST', authIntegration);
     authResource.addResource('forgot-password').addMethod('POST', authIntegration);
     authResource.addResource('confirm-new-password').addMethod('POST', authIntegration);
-    
+
     // Phone and Google auth
     const phoneResource = authResource.addResource('phone');
     phoneResource.addResource('send-code').addMethod('POST', authIntegration);
     phoneResource.addResource('verify-code').addMethod('POST', authIntegration);
     authResource.addResource('google').addMethod('POST', authIntegration);
-    
+
     // Therapist registration (part of auth service)
     const therapistAuthResource = authResource.addResource('therapist');
     therapistAuthResource.addResource('register').addMethod('POST', authIntegration);
 
     // Verification service routes
     const verificationResource = apiResource.addResource('verification');
-    
+
     // Public verification endpoints
     verificationResource.addResource('check-duplicate').addMethod('POST', verificationIntegration);
     verificationResource.addResource('register').addMethod('POST', verificationIntegration);
     verificationResource.addResource('status').addResource('{authProviderId}').addMethod('GET', verificationIntegration);
-    
+
     // Protected verification endpoints
     verificationResource.addResource('pending').addMethod('GET', verificationIntegration);
-    
+
     const verificationIdResource = verificationResource.addResource('{id}');
     verificationIdResource.addResource('approve').addMethod('POST', verificationIntegration);
     verificationIdResource.addResource('reject').addMethod('POST', verificationIntegration);
     verificationIdResource.addResource('background-check').addMethod('POST', verificationIntegration);
-    
+
     const documentsResource = verificationIdResource.addResource('documents');
     documentsResource.addMethod('GET', verificationIntegration);
     documentsResource.addMethod('POST', verificationIntegration);
-    
+
     // Organization invite endpoints
     const orgResource = verificationResource.addResource('organization');
     const invitesResource = orgResource.addResource('invites');
@@ -553,32 +559,32 @@ export class AtaraxiaStack extends cdk.Stack {
     // Therapist service routes
     const therapistResource = apiResource.addResource('therapist');
     therapistResource.addMethod('GET', therapistIntegration); // Get all therapists
-    
+
     // Enhanced therapist search
     const therapistSearchResource = therapistResource.addResource('search');
     therapistSearchResource.addMethod('GET', therapistIntegration); // Advanced search
-    
+
     const therapistIdResource = therapistResource.addResource('{id}');
     therapistIdResource.addMethod('GET', therapistIntegration); // Get therapist by ID
     therapistIdResource.addMethod('PUT', therapistIntegration); // Update therapist
-    
+
     const availabilityResource = therapistIdResource.addResource('availability');
     availabilityResource.addMethod('GET', therapistIntegration); // Get availability
     availabilityResource.addMethod('PUT', therapistIntegration); // Update availability
-    
+
     // Enhanced therapist management endpoints
     const specialtiesResource = therapistIdResource.addResource('specialties');
     specialtiesResource.addMethod('PUT', therapistIntegration); // Update specialties
-    
+
     const insuranceResource = therapistIdResource.addResource('insurance');
     insuranceResource.addMethod('PUT', therapistIntegration); // Update insurance
-    
+
     const capacityResource = therapistIdResource.addResource('capacity');
     capacityResource.addMethod('GET', therapistIntegration); // Get capacity
     capacityResource.addMethod('PUT', therapistIntegration); // Update capacity
-    
+
     therapistIdResource.addResource('verify').addMethod('POST', therapistIntegration); // Update verification status
-    
+
     // Therapist-client matching
     const matchingResource = therapistResource.addResource('matching');
     const matchingClientResource = matchingResource.addResource('{clientId}');
@@ -587,7 +593,7 @@ export class AtaraxiaStack extends cdk.Stack {
     // Client service routes
     const clientResource = apiResource.addResource('client');
     clientResource.addMethod('GET', clientIntegration); // Get all clients
-    
+
     const clientIdResource = clientResource.addResource('{id}');
     clientIdResource.addMethod('GET', clientIntegration); // Get client by ID
     clientIdResource.addMethod('PUT', clientIntegration); // Update client

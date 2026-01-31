@@ -9,50 +9,25 @@
 const express = require('express');
 const cors = require('cors');
 const { PrismaClient } = require('@prisma/client');
-const { 
-  CognitoIdentityProviderClient,
-  InitiateAuthCommand,
-  SignUpCommand,
-  ConfirmSignUpCommand,
-  ResendConfirmationCodeCommand,
-  ForgotPasswordCommand,
-  ConfirmForgotPasswordCommand,
-  RespondToAuthChallengeCommand,
-  AuthFlowType,
-  ChallengeNameType,
-  AdminInitiateAuthCommand,
-  AdminCreateUserCommand,
-  AdminSetUserPasswordCommand
-} = require('@aws-sdk/client-cognito-identity-provider');
-const { CognitoJwtVerifier } = require('aws-jwt-verify');
+const { CognitoProvider } = require('./dist/lib/auth/providers/CognitoProvider');
 require('dotenv').config();
 
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.API_PORT || 3010;
 
-// AWS Cognito Configuration (REAL CREDENTIALS)
+// Initialize Auth Provider
+const authProvider = new CognitoProvider(
+  process.env.AWS_REGION || 'us-west-2',
+  process.env.COGNITO_USER_POOL_ID || 'us-west-2_xeXlyFBMH',
+  process.env.COGNITO_CLIENT_ID || '7ek8kg1td2ps985r21m7727q98'
+);
+
 const COGNITO_CONFIG = {
+  region: process.env.AWS_REGION || 'us-west-2',
   userPoolId: process.env.COGNITO_USER_POOL_ID || 'us-west-2_xeXlyFBMH',
-  clientId: process.env.COGNITO_CLIENT_ID || '7ek8kg1td2ps985r21m7727q98',
-  region: process.env.AWS_REGION || 'us-west-2'
+  clientId: process.env.COGNITO_CLIENT_ID || '7ek8kg1td2ps985r21m7727q98'
 };
-
-// Initialize Cognito client
-const cognitoClient = new CognitoIdentityProviderClient({
-  region: COGNITO_CONFIG.region,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
-  }
-});
-
-// JWT Verifier for token validation
-const jwtVerifier = CognitoJwtVerifier.create({
-  userPoolId: COGNITO_CONFIG.userPoolId,
-  tokenUse: 'id',
-  clientId: COGNITO_CONFIG.clientId,
-});
 
 // Middleware
 app.use(cors({
@@ -87,10 +62,10 @@ app.get('/health', async (req, res) => {
   try {
     // Test database connection
     await prisma.$queryRaw`SELECT 1`;
-    
+
     // Test Cognito connection (basic check)
     const cognitoHealthy = COGNITO_CONFIG.userPoolId && COGNITO_CONFIG.clientId;
-    
+
     res.json({
       status: 'healthy',
       service: 'ataraxia-real-api',
@@ -108,6 +83,341 @@ app.get('/health', async (req, res) => {
 });
 
 // ============================================
+// CONFIGURATION MANAGEMENT ENDPOINTS
+// ============================================
+
+// GET /api/config - Complete configuration overview
+app.get('/api/config', async (req, res) => {
+  try {
+    // Parse database URL for detailed connection info
+    let dbDetails = {
+      configured: false,
+      host: 'not configured',
+      port: 'not configured',
+      database: 'not configured',
+      username: 'not configured',
+      password: 'not configured',
+      ssl: 'unknown'
+    };
+
+    if (process.env.DATABASE_URL) {
+      try {
+        const url = new URL(process.env.DATABASE_URL);
+        dbDetails = {
+          configured: true,
+          host: url.hostname,
+          port: url.port || '5432',
+          database: url.pathname.slice(1).split('?')[0],
+          username: url.username || 'not specified',
+          password: '***MASKED***',
+          ssl: url.hostname.includes('amazonaws.com') ? 'required' : 'unknown',
+          fullUrl: `postgresql://${url.username}:***@${url.hostname}:${url.port || '5432'}/${url.pathname.slice(1).split('?')[0]}`,
+          schema: url.searchParams.get('schema') || process.env.DATABASE_SCHEMA || 'public'
+        };
+      } catch (error) {
+        dbDetails.error = 'Invalid DATABASE_URL format';
+      }
+    }
+
+    // Test database connection
+    let dbConnectionTest = { status: 'testing...', connected: false, latency: 0 };
+    try {
+      const startTime = Date.now();
+      const result = await prisma.$queryRaw`SELECT version(), current_database(), current_user`;
+      const endTime = Date.now();
+      
+      if (result && result[0]) {
+        dbConnectionTest = {
+          status: 'connected',
+          connected: true,
+          version: result[0].version?.split(' ')[0] + ' ' + result[0].version?.split(' ')[1] || 'unknown',
+          database: result[0].current_database || 'unknown',
+          user: result[0].current_user || 'unknown',
+          latency: endTime - startTime
+        };
+      }
+    } catch (error) {
+      dbConnectionTest = {
+        status: 'connection failed',
+        connected: false,
+        error: error.message,
+        latency: 0
+      };
+    }
+
+    // Get database configurations
+    const dbConfigs = await prisma.system_configs.findMany({
+      select: {
+        config_key: true,
+        config_value: true,
+        description: true,
+        updated_at: true
+      },
+      orderBy: { config_key: 'asc' }
+    });
+
+    // CDK Deployment Information
+    let cdkOutputs = {};
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const cdkOutputsPath = path.join(__dirname, 'cdk-outputs.json');
+      if (fs.existsSync(cdkOutputsPath)) {
+        cdkOutputs = JSON.parse(fs.readFileSync(cdkOutputsPath, 'utf8'));
+      }
+    } catch (error) {
+      // CDK outputs not available
+    }
+
+    const response = {
+      system: {
+        name: 'Ataraxia-Next Healthcare Platform',
+        version: '2.0.0-real',
+        status: 'running',
+        environment: process.env.NODE_ENV || 'development',
+        deploymentType: process.env.AWS_LAMBDA_FUNCTION_NAME ? 'AWS Lambda' : 'Local Development',
+        timestamp: new Date().toISOString()
+      },
+      
+      database: {
+        provider: 'AWS RDS PostgreSQL',
+        connectionDetails: dbDetails,
+        connectionTest: dbConnectionTest,
+        configurationsStored: dbConfigs.length
+      },
+      
+      aws: {
+        region: process.env.AWS_REGION || 'not set',
+        accountId: process.env.AWS_ACCOUNT_ID ? `${process.env.AWS_ACCOUNT_ID.substring(0, 4)}***` : 'not set',
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID ? `${process.env.AWS_ACCESS_KEY_ID.substring(0, 8)}***` : 'not set',
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ? '***MASKED***' : 'not set'
+        },
+        services: {
+          cognito: {
+            configured: !!(process.env.COGNITO_USER_POOL_ID && process.env.COGNITO_CLIENT_ID),
+            userPoolId: process.env.COGNITO_USER_POOL_ID || 'not set',
+            clientId: process.env.COGNITO_CLIENT_ID ? `${process.env.COGNITO_CLIENT_ID.substring(0, 8)}***` : 'not set'
+          },
+          apiGateway: {
+            configured: !!process.env.API_GATEWAY_URL,
+            endpoint: process.env.API_GATEWAY_URL || 'not configured'
+          },
+          lambda: {
+            environment: process.env.AWS_LAMBDA_FUNCTION_NAME ? 'deployed' : 'local development',
+            functionName: process.env.AWS_LAMBDA_FUNCTION_NAME || 'running locally'
+          }
+        },
+        cdkDeployment: {
+          deployed: Object.keys(cdkOutputs).length > 0,
+          stack: Object.keys(cdkOutputs)[0] || 'not deployed',
+          resources: Object.keys(cdkOutputs).length > 0 ? cdkOutputs[Object.keys(cdkOutputs)[0]] : {}
+        }
+      },
+      
+      authentication: {
+        currentProvider: process.env.AUTH_PROVIDER_TYPE || 'cognito',
+        providerSource: process.env.AUTH_PROVIDER_TYPE ? 'ENV' : 'default',
+        universalAuthEnabled: process.env.ENABLE_UNIVERSAL_AUTH === 'true',
+        jwtConfigured: !!process.env.JWT_SECRET
+      },
+      
+      hybridConfiguration: {
+        priority: 'ENV → Database → Default',
+        environmentVariables: {
+          total: Object.keys(process.env).length,
+          authRelated: Object.keys(process.env).filter(key => 
+            key.includes('AUTH') || key.includes('COGNITO') || key.includes('JWT') || key.includes('FIREBASE')
+          ).length
+        },
+        databaseConfigurations: {
+          total: dbConfigs.length,
+          configurations: dbConfigs.map(config => ({
+            key: config.config_key,
+            hasValue: !!config.config_value,
+            source: process.env[config.config_key.toUpperCase()] ? 'ENV override' : 'Database',
+            lastUpdated: config.updated_at,
+            description: config.description
+          }))
+        }
+      },
+      
+      healthCheck: {
+        database: dbConnectionTest.connected,
+        authentication: !!(process.env.COGNITO_USER_POOL_ID && process.env.COGNITO_CLIENT_ID),
+        aws: !!(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY),
+        overall: dbConnectionTest.connected && !!(process.env.COGNITO_USER_POOL_ID && process.env.COGNITO_CLIENT_ID)
+      }
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Config error:', error);
+    res.status(500).json({
+      error: 'Failed to retrieve configuration',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// PUT /api/config - Update configuration in database
+app.put('/api/config', async (req, res) => {
+  try {
+    const { key, value, description } = req.body;
+
+    if (!key || value === undefined) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        message: 'Both key and value are required',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Update or create configuration in database
+    const updatedConfig = await prisma.system_configs.upsert({
+      where: { config_key: key },
+      update: {
+        config_value: value,
+        description: description || undefined,
+        updated_at: new Date()
+      },
+      create: {
+        config_key: key,
+        config_value: value,
+        description: description || undefined
+      }
+    });
+
+    // Check if ENV variable exists (ENV takes priority)
+    const envOverride = process.env[key.toUpperCase()];
+    const effectiveValue = envOverride || value;
+    const effectiveSource = envOverride ? 'ENV (overrides database)' : 'Database';
+
+    res.json({
+      success: true,
+      configuration: {
+        key: updatedConfig.config_key,
+        value: updatedConfig.config_value,
+        effectiveValue: effectiveValue,
+        source: effectiveSource,
+        description: updatedConfig.description,
+        updatedAt: updatedConfig.updated_at
+      },
+      message: envOverride 
+        ? `Configuration updated in database, but ENV variable '${key.toUpperCase()}' takes priority`
+        : 'Configuration updated successfully',
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Config update error:', error);
+    res.status(500).json({
+      error: 'Failed to update configuration',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// GET /api/config/:key - Get specific configuration
+app.get('/api/config/:key', async (req, res) => {
+  try {
+    const { key } = req.params;
+
+    // Check ENV first (highest priority)
+    const envValue = process.env[key.toUpperCase()];
+    if (envValue !== undefined) {
+      return res.json({
+        key,
+        value: envValue,
+        source: 'ENV',
+        priority: 1,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Check database
+    const dbConfig = await prisma.system_configs.findUnique({
+      where: { config_key: key }
+    });
+
+    if (dbConfig && dbConfig.config_value !== null) {
+      return res.json({
+        key,
+        value: dbConfig.config_value,
+        source: 'Database',
+        priority: 2,
+        description: dbConfig.description,
+        lastUpdated: dbConfig.updated_at,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Not found
+    res.status(404).json({
+      error: 'Configuration not found',
+      key,
+      message: `Configuration '${key}' not found in ENV or database`,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Config get error:', error);
+    res.status(500).json({
+      error: 'Failed to retrieve configuration',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// DELETE /api/config/:key - Delete configuration from database
+app.delete('/api/config/:key', async (req, res) => {
+  try {
+    const { key } = req.params;
+
+    // Check if configuration exists
+    const existingConfig = await prisma.system_configs.findUnique({
+      where: { config_key: key }
+    });
+
+    if (!existingConfig) {
+      return res.status(404).json({
+        error: 'Configuration not found',
+        key,
+        message: `Configuration '${key}' not found in database`,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Delete from database
+    await prisma.system_configs.delete({
+      where: { config_key: key }
+    });
+
+    // Check if ENV variable still exists
+    const envValue = process.env[key.toUpperCase()];
+    
+    res.json({
+      success: true,
+      key,
+      message: 'Configuration deleted from database',
+      note: envValue ? `ENV variable '${key.toUpperCase()}' still exists and will be used` : 'Configuration completely removed',
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Config delete error:', error);
+    res.status(500).json({
+      error: 'Failed to delete configuration',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// ============================================
 // REAL COGNITO AUTH ENDPOINTS
 // ============================================
 
@@ -116,7 +426,7 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    console.log('🔐 REAL Cognito login attempt:', { email, password: '***' });
+    console.log('🔐 Login attempt via AuthProvider:', { email, password: '***' });
 
     if (!email || !password) {
       return res.status(400).json({
@@ -124,66 +434,33 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    // REAL COGNITO AUTHENTICATION
-    const command = new InitiateAuthCommand({
-      ClientId: COGNITO_CONFIG.clientId,
-      AuthFlow: AuthFlowType.USER_PASSWORD_AUTH,
-      AuthParameters: {
-        USERNAME: email,
-        PASSWORD: password
-      }
-    });
+    // Use AuthProvider abstraction
+    const authResponse = await authProvider.signIn(email, password);
+    const { user: authUser, tokens } = authResponse;
 
-    const cognitoResponse = await cognitoClient.send(command);
-    
-    // Handle different authentication challenges
-    if (cognitoResponse.ChallengeName === ChallengeNameType.NEW_PASSWORD_REQUIRED) {
-      console.log('⚠️ User needs to change password (FORCE_CHANGE_PASSWORD status)');
-      return res.status(200).json({
-        challengeName: 'NEW_PASSWORD_REQUIRED',
-        session: cognitoResponse.Session,
-        message: 'Password change required. Please set a new password.',
-        needsPasswordChange: true
-      });
-    }
-    
-    if (!cognitoResponse.AuthenticationResult?.IdToken) {
-      throw new Error('Authentication failed');
-    }
-
-    // Verify and decode the JWT token
-    const payload = await jwtVerifier.verify(cognitoResponse.AuthenticationResult.IdToken);
-    
-    console.log('✅ Cognito authentication successful:', payload.sub);
+    console.log('✅ Authentication successful:', authUser.id);
 
     // Get or create user in PostgreSQL database
     let user = await prisma.users.findFirst({
       where: {
-        auth_provider_id: payload.sub,
+        auth_provider_id: authUser.id,
         auth_provider_type: 'cognito'
       }
     });
 
     if (!user) {
       console.log('👤 Creating new user in PostgreSQL database');
-      // Create user in database
       user = await prisma.users.create({
         data: {
-          email: payload.email,
-          first_name: payload.given_name || email.split('@')[0],
-          last_name: payload.family_name || 'User',
-          role: payload['custom:role'] || 'client',
-          auth_provider_id: payload.sub,
+          email: authUser.email,
+          first_name: authUser.firstName || email.split('@')[0],
+          last_name: authUser.lastName || 'User',
+          role: authUser.role || 'client',
+          auth_provider_id: authUser.id,
           auth_provider_type: 'cognito',
-          auth_provider_metadata: {
-            cognito_username: payload['cognito:username'],
-            email_verified: payload.email_verified,
-            auth_time: payload.auth_time,
-            iat: payload.iat,
-            exp: payload.exp
-          },
+          auth_provider_metadata: authUser.metadata || {},
           account_status: 'active',
-          email_verified: payload.email_verified === 'true' || payload.email_verified === true,
+          email_verified: authUser.emailVerified,
           created_at: new Date(),
           updated_at: new Date()
         }
@@ -191,7 +468,6 @@ app.post('/api/auth/login', async (req, res) => {
       console.log('✅ User created in database:', user.id);
     } else {
       console.log('👤 User found in database:', user.id);
-      // Update last login
       await prisma.users.update({
         where: { id: user.id },
         data: {
@@ -215,20 +491,25 @@ app.post('/api/auth/login', async (req, res) => {
         auth_provider_type: 'cognito',
         auth_provider_id: user.auth_provider_id
       },
-      token: cognitoResponse.AuthenticationResult.IdToken,
-      accessToken: cognitoResponse.AuthenticationResult.AccessToken,
-      refreshToken: cognitoResponse.AuthenticationResult.RefreshToken,
-      message: 'Login successful with real Cognito + PostgreSQL'
+      token: tokens.idToken,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      message: 'Login successful via AuthProvider'
     });
   } catch (error) {
     console.error('❌ Login error:', error);
+
+    // Check for NEW_PASSWORD_REQUIRED challenge
+    // Note: The generic provider might throw this or handle it differently.
+    // For now, we assume simple auth success/fail for this abstraction step.
+
     res.status(401).json({
       message: error.message || 'Authentication failed'
     });
   }
 });
 
-// Register endpoint - REAL COGNITO REGISTRATION
+// Register endpoint - REAL AUTH REGISTRATION
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { email, password, firstName, lastName, role = 'therapist', phoneNumber, countryCode } = req.body;
@@ -239,120 +520,67 @@ app.post('/api/auth/register', async (req, res) => {
       });
     }
 
-    console.log('📝 REAL Cognito registration:', { email, firstName, lastName, role, phoneNumber, countryCode });
+    console.log('📝 Registration via AuthProvider:', { email, firstName, lastName, role });
 
-    // Format phone number to E.164 format if provided
-    let formattedPhoneNumber = null;
-    if (phoneNumber && countryCode) {
-      // Remove any non-digit characters from phone number
-      const cleanPhone = phoneNumber.replace(/\D/g, '');
-      // Ensure country code starts with +
-      const cleanCountryCode = countryCode.startsWith('+') ? countryCode : `+${countryCode}`;
-      formattedPhoneNumber = `${cleanCountryCode}${cleanPhone}`;
-      console.log('📱 Formatted phone number:', formattedPhoneNumber);
-      
-      // Validate phone number format (basic validation)
-      if (formattedPhoneNumber.length < 10 || formattedPhoneNumber.length > 15) {
-        return res.status(400).json({
-          message: 'Invalid phone number format. Please provide a valid phone number.'
-        });
-      }
-    } else if (phoneNumber) {
-      // If only phone number provided without country code, assume it needs formatting
-      const cleanPhone = phoneNumber.replace(/\D/g, '');
-      // Default to +91 for Indian numbers if no country code provided
-      formattedPhoneNumber = `+91${cleanPhone}`;
-      console.log('📱 Auto-formatted phone number (assuming +91):', formattedPhoneNumber);
-    }
-
-    // REAL COGNITO REGISTRATION
-    const userAttributes = [
-      { Name: 'email', Value: email },
-      { Name: 'given_name', Value: firstName },
-      { Name: 'family_name', Value: lastName },
-      { Name: 'custom:role', Value: role }
-    ];
-
-    // Add phone number only if properly formatted
-    if (formattedPhoneNumber) {
-      userAttributes.push({ Name: 'phone_number', Value: formattedPhoneNumber });
-    }
-
-    const command = new SignUpCommand({
-      ClientId: COGNITO_CONFIG.clientId,
-      Username: email,
-      Password: password,
-      UserAttributes: userAttributes
-    });
-
-    const cognitoResponse = await cognitoClient.send(command);
-    
-    console.log('✅ Cognito user created:', cognitoResponse.UserSub);
-
-    // Create user in PostgreSQL database
-    const user = await prisma.users.create({
-      data: {
-        email,
-        first_name: firstName,
-        last_name: lastName,
+    // Use AuthProvider abstraction for registration
+    try {
+      const userId = await authProvider.signUp(email, password, {
+        firstName,
+        lastName,
         role,
-        phone_number: formattedPhoneNumber,
-        auth_provider_id: cognitoResponse.UserSub,
-        auth_provider_type: 'cognito',
-        auth_provider_metadata: {
-          cognito_username: email,
-          registration_date: new Date().toISOString(),
-          needs_verification: true,
-          phone_formatted: formattedPhoneNumber
+        phoneNumber,
+        countryCode
+      });
+
+      console.log('✅ Auth user created:', userId);
+
+      // Create user in PostgreSQL database
+      const user = await prisma.users.create({
+        data: {
+          email,
+          first_name: firstName,
+          last_name: lastName,
+          role,
+          phone_number: phoneNumber ? (phoneNumber.replace(/\D/g, '')) : null, // Simplified
+          auth_provider_id: userId,
+          auth_provider_type: 'cognito',
+          auth_provider_metadata: {
+            registration_date: new Date().toISOString(),
+            needs_verification: true
+          },
+          account_status: role === 'therapist' ? 'pending_verification' : 'active',
+          email_verified: false,
+          created_at: new Date(),
+          updated_at: new Date()
+        }
+      });
+
+      console.log('✅ User created in database:', user.id);
+
+      res.status(201).json({
+        user: {
+          id: user.id.toString(),
+          email: user.email,
+          name: `${user.first_name} ${user.last_name}`,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          role: user.role,
+          phone_number: user.phone_number,
+          account_status: user.account_status,
+          auth_provider_type: 'cognito',
+          auth_provider_id: user.auth_provider_id
         },
-        account_status: role === 'therapist' ? 'pending_verification' : 'active',
-        email_verified: false,
-        created_at: new Date(),
-        updated_at: new Date()
-      }
-    });
+        message: 'Registration successful. Please verify your email.',
+        needsVerification: true
+      });
+    } catch (authError) {
+      throw authError;
+    }
 
-    console.log('✅ User created in database:', user.id);
-
-    res.status(201).json({
-      user: {
-        id: user.id.toString(),
-        email: user.email,
-        name: `${user.first_name} ${user.last_name}`,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        role: user.role,
-        phone_number: user.phone_number,
-        account_status: user.account_status,
-        auth_provider_type: 'cognito',
-        auth_provider_id: user.auth_provider_id
-      },
-      message: 'Registration successful. Please verify your email.',
-      needsVerification: true
-    });
   } catch (error) {
     console.error('❌ Registration error:', error);
-    
-    let errorMessage = 'Registration failed';
-    let statusCode = 400;
-    
-    if (error.name === 'UsernameExistsException') {
-      errorMessage = 'This email address is already registered';
-      statusCode = 409;
-    } else if (error.name === 'InvalidPasswordException') {
-      errorMessage = 'Password does not meet security requirements';
-    } else if (error.name === 'InvalidParameterException') {
-      if (error.message?.includes('phone')) {
-        errorMessage = 'Invalid phone number format. Please use international format (e.g., +919999999999)';
-      } else {
-        errorMessage = 'Invalid email format';
-      }
-    } else if (error.message) {
-      errorMessage = error.message;
-    }
-    
-    res.status(statusCode).json({
-      message: errorMessage
+    res.status(400).json({
+      message: error.message || 'Registration failed'
     });
   }
 });
@@ -361,7 +589,7 @@ app.post('/api/auth/register', async (req, res) => {
 app.get('/api/auth/me', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         message: 'Authorization header required'
@@ -369,14 +597,14 @@ app.get('/api/auth/me', async (req, res) => {
     }
 
     const token = authHeader.substring(7);
-    
-    // Verify JWT token with Cognito
-    const payload = await jwtVerifier.verify(token);
-    
+
+    // Verify JWT token with AuthProvider
+    const authUser = await authProvider.verifyToken(token);
+
     // Get user from PostgreSQL database
     const user = await prisma.users.findFirst({
       where: {
-        auth_provider_id: payload.sub,
+        auth_provider_id: authUser.id,
         auth_provider_type: 'cognito'
       }
     });
@@ -432,14 +660,14 @@ app.post('/api/auth/confirm-new-password', async (req, res) => {
     });
 
     const cognitoResponse = await cognitoClient.send(command);
-    
+
     if (!cognitoResponse.AuthenticationResult?.IdToken) {
       throw new Error('Password change failed');
     }
 
     // Verify and decode the JWT token
     const payload = await jwtVerifier.verify(cognitoResponse.AuthenticationResult.IdToken);
-    
+
     console.log('✅ Password changed successfully:', payload.sub);
 
     // Get or create user in PostgreSQL database
@@ -523,12 +751,12 @@ app.post('/api/auth/phone/send-code', async (req, res) => {
 
     // Format phone number for Cognito (E.164 format)
     const formattedPhone = `${countryCode}${phoneNumber.replace(/\D/g, '')}`;
-    
+
     console.log('📱 Sending SMS code to:', formattedPhone);
 
     // Generate a 6-digit verification code
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-    
+
     // Store the code temporarily (in production, use Redis or database)
     const codeKey = `phone_verification_${formattedPhone}`;
     global.phoneVerificationCodes = global.phoneVerificationCodes || {};
@@ -598,7 +826,7 @@ app.post('/api/auth/phone/verify-code', async (req, res) => {
     delete global.phoneVerificationCodes[codeKey];
 
     console.log('✅ Phone number verified successfully');
-    
+
     res.json({
       success: true,
       message: 'Phone number verified successfully',
@@ -608,7 +836,7 @@ app.post('/api/auth/phone/verify-code', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Phone verification error:', error);
-    
+
     res.status(400).json({
       message: error.message || 'Phone verification failed'
     });
@@ -638,7 +866,7 @@ app.post('/api/auth/google', async (req, res) => {
 
       // Decode the JWT token (in production, verify signature with Google's public keys)
       const payload = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64').toString());
-      
+
       // Basic validation (in production, verify with Google's public keys)
       if (!payload.email || !payload.sub) {
         throw new Error('Invalid Google token payload');
@@ -672,7 +900,7 @@ app.post('/api/auth/google', async (req, res) => {
     if (!user) {
       // Create new user in Cognito
       const cognitoUsername = `google_${googleUser.sub}`;
-      
+
       try {
         const createCommand = new AdminCreateUserCommand({
           UserPoolId: COGNITO_CONFIG.userPoolId,
@@ -698,7 +926,7 @@ app.post('/api/auth/google', async (req, res) => {
           Password: Math.random().toString(36).slice(-16) + 'A1!',
           Permanent: true
         });
-        
+
         await cognitoClient.send(setPasswordCommand);
 
         // Create user in our database
@@ -837,7 +1065,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 app.post('/api/auth/therapist/register', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         message: 'Authorization header required'
@@ -845,7 +1073,7 @@ app.post('/api/auth/therapist/register', async (req, res) => {
     }
 
     const token = authHeader.substring(7);
-    
+
     // Verify JWT token with Cognito
     let payload;
     try {
@@ -963,11 +1191,11 @@ app.post('/api/auth/therapist/register', async (req, res) => {
     // Create therapist profile with all the detailed information
     const therapistProfile = {
       user_id: user.id,
-      
+
       // Personal Information
       gender,
       date_of_birth: dateOfBirth ? new Date(dateOfBirth) : null,
-      
+
       // Address
       address_line_1: address1,
       address_line_2: address2,
@@ -976,34 +1204,34 @@ app.post('/api/auth/therapist/register', async (req, res) => {
       country,
       postal_code: zipCode,
       timezone,
-      
+
       // Languages
       languages_spoken: languages || [],
-      
+
       // License Information
       license_type: licenseType,
       license_number: licenseNumber,
       license_states: issuingStates || [],
       license_expiry_date: licenseExpiryDate ? new Date(licenseExpiryDate) : null,
-      
+
       // Professional Information
       specialties: specialties || [],
       therapeutic_modalities: therapeuticModalities || [],
       session_formats: sessionFormats || {},
-      
+
       // Schedule
       weekly_schedule: weeklySchedule || {},
-      
+
       // Profile Information
       short_bio: shortBio,
       extended_bio: extendedBio,
       what_clients_can_expect: whatClientsCanExpected,
       approach_to_therapy: myApproachToTherapy,
-      
+
       // Photos
       profile_photo_url: typeof profilePhoto === 'string' ? profilePhoto : null,
       headshot_url: typeof headshot === 'string' ? headshot : null,
-      
+
       // Status
       verification_status: 'pending',
       created_at: new Date(),
@@ -1043,15 +1271,15 @@ app.post('/api/auth/therapist/register', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Therapist registration error:', error);
-    
+
     let errorMessage = 'Registration failed';
     let statusCode = 500;
-    
+
     if (error.code === 'P2002') {
       errorMessage = 'This email or license number is already registered';
       statusCode = 409;
     }
-    
+
     res.status(statusCode).json({
       message: errorMessage,
       error: error.message
@@ -1067,7 +1295,7 @@ app.post('/api/auth/therapist/register', async (req, res) => {
 app.get('/api/therapist', async (req, res) => {
   try {
     const { status, search, limit = 20, offset = 0, specialty, location } = req.query;
-    
+
     const limitNum = Math.min(parseInt(limit) || 20, 100);
     const offsetNum = parseInt(offset) || 0;
 
@@ -1134,10 +1362,10 @@ app.get('/api/therapist', async (req, res) => {
       FROM ataraxia.users u
       WHERE u.role = 'therapist'
     `;
-    
+
     const countParams = [];
     let countParamIndex = 1;
-    
+
     if (status) {
       countSql += ` AND u.account_status = $${countParamIndex}`;
       countParams.push(status);
@@ -1282,7 +1510,7 @@ app.get('/api/therapist/:id', async (req, res) => {
 app.put('/api/therapist/:id', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         success: false,
@@ -1292,7 +1520,7 @@ app.put('/api/therapist/:id', async (req, res) => {
     }
 
     const token = authHeader.substring(7);
-    
+
     // Verify JWT token with Cognito
     try {
       await jwtVerifier.verify(token);
@@ -1348,7 +1576,7 @@ app.put('/api/therapist/:id', async (req, res) => {
 
     if (Object.keys(therapistUpdateData).length > 0) {
       therapistUpdateData.updated_at = new Date();
-      
+
       try {
         await prisma.therapists.update({
           where: { user_id: parseInt(id) },
@@ -1356,7 +1584,7 @@ app.put('/api/therapist/:id', async (req, res) => {
         });
       } catch (error) {
         console.warn(`Therapist profile not found for user ${id}, creating new profile`);
-        
+
         // Create therapist profile if it doesn't exist
         await prisma.therapists.create({
           data: {
@@ -1432,7 +1660,7 @@ app.get('/api/therapist/:id/availability', async (req, res) => {
 app.put('/api/therapist/:id/availability', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         success: false,
@@ -1442,7 +1670,7 @@ app.put('/api/therapist/:id/availability', async (req, res) => {
     }
 
     const token = authHeader.substring(7);
-    
+
     // Verify JWT token with Cognito
     try {
       await jwtVerifier.verify(token);
@@ -1500,7 +1728,7 @@ app.put('/api/therapist/:id/availability', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Update availability error:', error);
-    
+
     if (error.code === 'P2025') {
       return res.status(404).json({
         success: false,
@@ -1521,7 +1749,7 @@ app.put('/api/therapist/:id/availability', async (req, res) => {
 app.post('/api/therapist/:id/verify', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         success: false,
@@ -1531,7 +1759,7 @@ app.post('/api/therapist/:id/verify', async (req, res) => {
     }
 
     const token = authHeader.substring(7);
-    
+
     // Verify JWT token with Cognito
     try {
       await jwtVerifier.verify(token);
@@ -1630,7 +1858,7 @@ app.post('/api/therapist/:id/verify', async (req, res) => {
 app.get('/api/client', async (req, res) => {
   try {
     const { status, search, limit = 20, offset = 0, therapist_id } = req.query;
-    
+
     const limitNum = Math.min(parseInt(limit) || 20, 100);
     const offsetNum = parseInt(offset) || 0;
 
@@ -1690,10 +1918,10 @@ app.get('/api/client', async (req, res) => {
       FROM ataraxia.users u
       WHERE u.role = 'client'
     `;
-    
+
     const countParams = [];
     let countParamIndex = 1;
-    
+
     if (status) {
       countSql += ` AND u.account_status = $${countParamIndex}`;
       countParams.push(status);
@@ -1841,7 +2069,7 @@ app.get('/api/client/:id', async (req, res) => {
 app.put('/api/client/:id', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         success: false,
@@ -1851,7 +2079,7 @@ app.put('/api/client/:id', async (req, res) => {
     }
 
     const token = authHeader.substring(7);
-    
+
     // Verify JWT token with Cognito
     try {
       await jwtVerifier.verify(token);
@@ -1869,7 +2097,7 @@ app.put('/api/client/:id', async (req, res) => {
     // Separate updates for 'users' vs 'clients' tables
     const userFields = ['first_name', 'last_name', 'phone_number', 'email', 'profile_image_url', 'account_status'];
     const clientFields = [
-      'safety_risk_level', 'assigned_therapist_id', 'status', 
+      'safety_risk_level', 'assigned_therapist_id', 'status',
       'has_insurance', 'insurance_data', 'emergency_contact_json'
     ];
 
@@ -1899,7 +2127,7 @@ app.put('/api/client/:id', async (req, res) => {
 
     if (Object.keys(clientUpdateData).length > 0) {
       clientUpdateData.updated_at = new Date();
-      
+
       try {
         await prisma.clients.update({
           where: { user_id: parseInt(id) },
@@ -1908,7 +2136,7 @@ app.put('/api/client/:id', async (req, res) => {
       } catch (error) {
         if (error.code === 'P2025') {
           console.warn(`Client profile not found for user ${id}, creating new profile`);
-          
+
           // Create client profile if it doesn't exist
           await prisma.clients.create({
             data: {
@@ -1944,7 +2172,7 @@ app.put('/api/client/:id', async (req, res) => {
 app.post('/api/client/:id/assign', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         success: false,
@@ -1954,7 +2182,7 @@ app.post('/api/client/:id/assign', async (req, res) => {
     }
 
     const token = authHeader.substring(7);
-    
+
     // Verify JWT token with Cognito
     try {
       await jwtVerifier.verify(token);
@@ -2017,7 +2245,7 @@ app.post('/api/client/:id/assign', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Assign therapist error:', error);
-    
+
     if (error.code === 'P2025') {
       return res.status(404).json({
         success: false,
@@ -2030,6 +2258,582 @@ app.post('/api/client/:id/assign', async (req, res) => {
       success: false,
       error: 'ASSIGN_THERAPIST_FAILED',
       message: 'Failed to assign therapist'
+    });
+  }
+});
+
+// ============================================
+// APPOINTMENT ENDPOINTS - REAL POSTGRESQL
+// ============================================
+
+// Get all appointments with filtering
+app.get('/api/appointment', async (req, res) => {
+  try {
+    const {
+      therapist_id,
+      client_id,
+      status,
+      type,
+      start_date,
+      end_date,
+      limit = '50',
+      offset = '0'
+    } = req.query;
+
+    console.log('📅 Fetching appointments with filters:', {
+      therapist_id,
+      client_id,
+      status,
+      type,
+      start_date,
+      end_date,
+      limit,
+      offset
+    });
+
+    // Build where clause
+    const where = {};
+
+    if (therapist_id) {
+      where.therapist_id = BigInt(therapist_id);
+    }
+
+    if (client_id) {
+      where.client_id = BigInt(client_id);
+    }
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (type) {
+      where.type = type;
+    }
+
+    if (start_date || end_date) {
+      const dateFilter = {};
+      if (start_date) {
+        dateFilter.gte = new Date(start_date);
+      }
+      if (end_date) {
+        dateFilter.lte = new Date(end_date);
+      }
+      where.start_time = dateFilter;
+    }
+
+    // Fetch appointments
+    const appointments = await prisma.appointments.findMany({
+      where,
+      include: {
+        users_appointments_therapist_idTousers: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true
+          }
+        },
+        users_appointments_client_idTousers: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true
+          }
+        }
+      },
+      orderBy: { start_time: 'asc' },
+      take: parseInt(limit),
+      skip: parseInt(offset)
+    });
+
+    // Get total count
+    const total = await prisma.appointments.count({ where });
+
+    // Transform BigInt to string
+    const transformedAppointments = appointments.map(apt => ({
+      id: apt.id.toString(),
+      therapist_id: apt.therapist_id?.toString(),
+      client_id: apt.client_id?.toString(),
+      start_time: apt.start_time,
+      end_time: apt.end_time,
+      status: apt.status,
+      type: apt.type,
+      title: apt.title,
+      notes: apt.notes,
+      meeting_link: apt.meeting_link,
+      therapist: apt.users_appointments_therapist_idTousers ? {
+        id: apt.users_appointments_therapist_idTousers.id.toString(),
+        first_name: apt.users_appointments_therapist_idTousers.first_name,
+        last_name: apt.users_appointments_therapist_idTousers.last_name,
+        email: apt.users_appointments_therapist_idTousers.email
+      } : null,
+      client: apt.users_appointments_client_idTousers ? {
+        id: apt.users_appointments_client_idTousers.id.toString(),
+        first_name: apt.users_appointments_client_idTousers.first_name,
+        last_name: apt.users_appointments_client_idTousers.last_name,
+        email: apt.users_appointments_client_idTousers.email
+      } : null,
+      created_at: apt.created_at,
+      updated_at: apt.updated_at
+    }));
+
+    console.log(`✅ Found ${transformedAppointments.length} appointments`);
+
+    res.json({
+      success: true,
+      data: {
+        appointments: transformedAppointments,
+        pagination: {
+          total,
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          hasMore: parseInt(offset) + transformedAppointments.length < total
+        }
+      },
+      message: 'Appointments retrieved successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Get appointments error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'GET_APPOINTMENTS_FAILED',
+      message: 'Failed to retrieve appointments'
+    });
+  }
+});
+
+// Get single appointment
+app.get('/api/appointment/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    console.log('📅 Fetching appointment:', id);
+
+    const appointment = await prisma.appointments.findUnique({
+      where: { id: BigInt(id) },
+      include: {
+        users_appointments_therapist_idTousers: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true,
+            phone_number: true
+          }
+        },
+        users_appointments_client_idTousers: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true,
+            phone_number: true
+          }
+        }
+      }
+    });
+
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        error: 'APPOINTMENT_NOT_FOUND',
+        message: 'Appointment not found'
+      });
+    }
+
+    // Transform BigInt to string
+    const transformedAppointment = {
+      id: appointment.id.toString(),
+      therapist_id: appointment.therapist_id?.toString(),
+      client_id: appointment.client_id?.toString(),
+      start_time: appointment.start_time,
+      end_time: appointment.end_time,
+      status: appointment.status,
+      type: appointment.type,
+      title: appointment.title,
+      notes: appointment.notes,
+      meeting_link: appointment.meeting_link,
+      therapist: appointment.users_appointments_therapist_idTousers ? {
+        id: appointment.users_appointments_therapist_idTousers.id.toString(),
+        first_name: appointment.users_appointments_therapist_idTousers.first_name,
+        last_name: appointment.users_appointments_therapist_idTousers.last_name,
+        email: appointment.users_appointments_therapist_idTousers.email,
+        phone_number: appointment.users_appointments_therapist_idTousers.phone_number
+      } : null,
+      client: appointment.users_appointments_client_idTousers ? {
+        id: appointment.users_appointments_client_idTousers.id.toString(),
+        first_name: appointment.users_appointments_client_idTousers.first_name,
+        last_name: appointment.users_appointments_client_idTousers.last_name,
+        email: appointment.users_appointments_client_idTousers.email,
+        phone_number: appointment.users_appointments_client_idTousers.phone_number
+      } : null,
+      created_at: appointment.created_at,
+      updated_at: appointment.updated_at
+    };
+
+    console.log('✅ Appointment retrieved successfully');
+
+    res.json({
+      success: true,
+      data: { appointment: transformedAppointment },
+      message: 'Appointment retrieved successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Get appointment error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'GET_APPOINTMENT_FAILED',
+      message: 'Failed to retrieve appointment'
+    });
+  }
+});
+
+// Create appointment
+app.post('/api/appointment', async (req, res) => {
+  try {
+    const {
+      therapist_id,
+      client_id,
+      start_time,
+      end_time,
+      type = 'video',
+      title,
+      notes
+    } = req.body;
+
+    console.log('📅 Creating appointment:', {
+      therapist_id,
+      client_id,
+      start_time,
+      end_time,
+      type,
+      title
+    });
+
+    // Validate required fields
+    if (!therapist_id || !start_time || !end_time) {
+      return res.status(400).json({
+        success: false,
+        error: 'VALIDATION_ERROR',
+        message: 'therapist_id, start_time, and end_time are required'
+      });
+    }
+
+    // Validate time range
+    const startDate = new Date(start_time);
+    const endDate = new Date(end_time);
+
+    if (endDate <= startDate) {
+      return res.status(400).json({
+        success: false,
+        error: 'VALIDATION_ERROR',
+        message: 'end_time must be after start_time'
+      });
+    }
+
+    // Check for conflicts
+    const conflicts = await prisma.appointments.findMany({
+      where: {
+        therapist_id: BigInt(therapist_id),
+        status: { notIn: ['cancelled', 'no_show'] },
+        OR: [
+          {
+            AND: [
+              { start_time: { lte: startDate } },
+              { end_time: { gt: startDate } }
+            ]
+          },
+          {
+            AND: [
+              { start_time: { lt: endDate } },
+              { end_time: { gte: endDate } }
+            ]
+          },
+          {
+            AND: [
+              { start_time: { gte: startDate } },
+              { end_time: { lte: endDate } }
+            ]
+          }
+        ]
+      }
+    });
+
+    if (conflicts.length > 0) {
+      return res.status(409).json({
+        success: false,
+        error: 'SCHEDULING_CONFLICT',
+        message: 'Therapist has a conflicting appointment at this time',
+        conflicts: conflicts.map(c => ({
+          id: c.id.toString(),
+          start_time: c.start_time,
+          end_time: c.end_time
+        }))
+      });
+    }
+
+    // Create appointment
+    const appointment = await prisma.appointments.create({
+      data: {
+        therapist_id: BigInt(therapist_id),
+        client_id: client_id ? BigInt(client_id) : null,
+        start_time: startDate,
+        end_time: endDate,
+        type,
+        title: title || `${type} session`,
+        notes,
+        status: 'scheduled',
+        created_at: new Date(),
+        updated_at: new Date()
+      },
+      include: {
+        users_appointments_therapist_idTousers: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true
+          }
+        },
+        users_appointments_client_idTousers: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    // Transform BigInt to string
+    const transformedAppointment = {
+      id: appointment.id.toString(),
+      therapist_id: appointment.therapist_id?.toString(),
+      client_id: appointment.client_id?.toString(),
+      start_time: appointment.start_time,
+      end_time: appointment.end_time,
+      status: appointment.status,
+      type: appointment.type,
+      title: appointment.title,
+      notes: appointment.notes,
+      therapist: appointment.users_appointments_therapist_idTousers ? {
+        id: appointment.users_appointments_therapist_idTousers.id.toString(),
+        first_name: appointment.users_appointments_therapist_idTousers.first_name,
+        last_name: appointment.users_appointments_therapist_idTousers.last_name,
+        email: appointment.users_appointments_therapist_idTousers.email
+      } : null,
+      client: appointment.users_appointments_client_idTousers ? {
+        id: appointment.users_appointments_client_idTousers.id.toString(),
+        first_name: appointment.users_appointments_client_idTousers.first_name,
+        last_name: appointment.users_appointments_client_idTousers.last_name,
+        email: appointment.users_appointments_client_idTousers.email
+      } : null,
+      created_at: appointment.created_at,
+      updated_at: appointment.updated_at
+    };
+
+    console.log('✅ Appointment created successfully:', transformedAppointment.id);
+
+    res.status(201).json({
+      success: true,
+      data: transformedAppointment,
+      message: 'Appointment created successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Create appointment error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'CREATE_APPOINTMENT_FAILED',
+      message: 'Failed to create appointment'
+    });
+  }
+});
+
+// Update appointment
+app.put('/api/appointment/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      start_time,
+      end_time,
+      status,
+      type,
+      title,
+      notes,
+      meeting_link
+    } = req.body;
+
+    console.log('📅 Updating appointment:', id, req.body);
+
+    // Check if appointment exists
+    const existing = await prisma.appointments.findUnique({
+      where: { id: BigInt(id) }
+    });
+
+    if (!existing || existing.deleted_at) {
+      return res.status(404).json({
+        success: false,
+        error: 'APPOINTMENT_NOT_FOUND',
+        message: 'Appointment not found'
+      });
+    }
+
+    // Build update data
+    const updateData = {
+      updated_at: new Date()
+    };
+
+    if (start_time) updateData.start_time = new Date(start_time);
+    if (end_time) updateData.end_time = new Date(end_time);
+    if (status) updateData.status = status;
+    if (type) updateData.type = type;
+    if (title) updateData.title = title;
+    if (notes !== undefined) updateData.notes = notes;
+    if (meeting_link !== undefined) updateData.meeting_link = meeting_link;
+
+    // Validate time range if both are provided
+    if (updateData.start_time && updateData.end_time) {
+      if (updateData.end_time <= updateData.start_time) {
+        return res.status(400).json({
+          success: false,
+          error: 'VALIDATION_ERROR',
+          message: 'end_time must be after start_time'
+        });
+      }
+    }
+
+    // Update appointment
+    const appointment = await prisma.appointments.update({
+      where: { id: BigInt(id) },
+      data: updateData,
+      include: {
+        users_appointments_therapist_idTousers: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true
+          }
+        },
+        users_appointments_client_idTousers: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    // Transform BigInt to string
+    const transformedAppointment = {
+      id: appointment.id.toString(),
+      therapist_id: appointment.therapist_id?.toString(),
+      client_id: appointment.client_id?.toString(),
+      start_time: appointment.start_time,
+      end_time: appointment.end_time,
+      status: appointment.status,
+      type: appointment.type,
+      title: appointment.title,
+      notes: appointment.notes,
+      meeting_link: appointment.meeting_link,
+      therapist: appointment.users_appointments_therapist_idTousers ? {
+        id: appointment.users_appointments_therapist_idTousers.id.toString(),
+        first_name: appointment.users_appointments_therapist_idTousers.first_name,
+        last_name: appointment.users_appointments_therapist_idTousers.last_name,
+        email: appointment.users_appointments_therapist_idTousers.email
+      } : null,
+      client: appointment.users_appointments_client_idTousers ? {
+        id: appointment.users_appointments_client_idTousers.id.toString(),
+        first_name: appointment.users_appointments_client_idTousers.first_name,
+        last_name: appointment.users_appointments_client_idTousers.last_name,
+        email: appointment.users_appointments_client_idTousers.email
+      } : null,
+      created_at: appointment.created_at,
+      updated_at: appointment.updated_at
+    };
+
+    console.log('✅ Appointment updated successfully');
+
+    res.json({
+      success: true,
+      data: transformedAppointment,
+      message: 'Appointment updated successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Update appointment error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'UPDATE_APPOINTMENT_FAILED',
+      message: 'Failed to update appointment'
+    });
+  }
+});
+
+// Delete/Cancel appointment
+app.delete('/api/appointment/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { hard_delete = false } = req.query;
+
+    console.log('📅 Deleting appointment:', id, { hard_delete });
+
+    // Check if appointment exists
+    const existing = await prisma.appointments.findUnique({
+      where: { id: BigInt(id) }
+    });
+
+    if (!existing || existing.deleted_at) {
+      return res.status(404).json({
+        success: false,
+        error: 'APPOINTMENT_NOT_FOUND',
+        message: 'Appointment not found'
+      });
+    }
+
+    if (hard_delete === 'true') {
+      // Hard delete
+      await prisma.appointments.delete({
+        where: { id: BigInt(id) }
+      });
+
+      console.log('✅ Appointment hard deleted');
+
+      res.json({
+        success: true,
+        message: 'Appointment permanently deleted'
+      });
+    } else {
+      // Soft delete (cancel)
+      await prisma.appointments.update({
+        where: { id: BigInt(id) },
+        data: {
+          status: 'cancelled',
+          updated_at: new Date()
+        }
+      });
+
+      console.log('✅ Appointment cancelled');
+
+      res.json({
+        success: true,
+        message: 'Appointment cancelled successfully'
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Delete appointment error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'DELETE_APPOINTMENT_FAILED',
+      message: 'Failed to delete appointment'
     });
   }
 });
@@ -2104,7 +2908,7 @@ async function startServer() {
       console.log(`\n  🏥 System Endpoints:`);
       console.log(`    GET    /health                    - Health check`);
       console.log(`\n${'='.repeat(70)}`);
-      
+
       console.log(`\n  💡 Frontend Configuration:`);
       console.log(`     Update your frontend .env.local:`);
       console.log(`     VITE_API_BASE_URL=http://localhost:${PORT}`);

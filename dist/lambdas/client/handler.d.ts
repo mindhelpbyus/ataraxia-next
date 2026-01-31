@@ -1,10 +1,12 @@
 /**
- * Client Lambda Handler
+ * Fixed Client Lambda Handler
  *
- * Handles all client-related operations including:
- * - Profile management
- * - Preferences
- * - History and records
+ * Provides comprehensive Client management with full CRUD:
+ * - Profile Management (Personal, Contact, Emergency)
+ * - Medical History (Conditions, Medications, Allergies)
+ * - Insurance Data (Primary, Secondary)
+ * - Safety Assessments (Risk Level, Flags)
+ * - Treatment Plans and Consents
  */
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 export declare const handler: (event: APIGatewayProxyEvent) => Promise<APIGatewayProxyResult>;

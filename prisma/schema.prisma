@@ -601,6 +601,8 @@ model users {
   auth_provider_id                                                            String?                        @db.VarChar(255)
   auth_provider_type                                                          String?                        @default("firebase") @db.VarChar(50)
   auth_provider_metadata                                                      Json?                          @default("{}")
+  phone_verified                                                              Boolean?                       @default(false)
+  phone_verified_at                                                           DateTime?                      @db.Timestamptz(6)
   appointments_appointments_client_idTousers                                  appointments[]                 @relation("appointments_client_idTousers")
   appointments_appointments_therapist_idTousers                               appointments[]                 @relation("appointments_therapist_idTousers")
   clients_clients_assigned_therapist_idTousers                                clients[]                      @relation("clients_assigned_therapist_idTousers")
@@ -634,6 +636,11 @@ model users {
   verification_audit_log_verification_audit_log_user_idTousers                verification_audit_log[]       @relation("verification_audit_log_user_idTousers")
   verification_workflow_log_verification_workflow_log_performed_byTousers     verification_workflow_log[]    @relation("verification_workflow_log_performed_byTousers")
   verification_workflow_log_verification_workflow_log_user_idTousers          verification_workflow_log[]    @relation("verification_workflow_log_user_idTousers")
+  phone_verification_codes                                                    phone_verification_codes[]
+  onboarding_sessions                                                         onboarding_sessions?
+  auth_audit_log                                                              auth_audit_log[]
+  session_tokens                                                              session_tokens[]
+  user_login_history                                                          user_login_history[]
 
   @@index([account_status], map: "idx_users_account_status")
   @@index([auth_methods], map: "idx_users_auth_methods", type: Gin)
@@ -683,4 +690,104 @@ model verification_workflow_log {
 
   @@index([temp_registration_id], map: "idx_workflow_log_temp_reg_id")
   @@index([user_id], map: "idx_workflow_log_user_id")
+}
+
+model system_configs {
+  config_key   String   @id @db.VarChar(100)
+  config_value String?
+  description  String?
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+}
+
+// Authentication Support Tables
+model phone_verification_codes {
+  id           BigInt    @id @default(autoincrement())
+  user_id      BigInt
+  phone_number String    @db.VarChar(20)
+  code         String    @db.VarChar(10)
+  expires_at   DateTime  @db.Timestamptz(6)
+  verified_at  DateTime? @db.Timestamptz(6)
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  users        users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, phone_number])
+  @@index([user_id], map: "idx_phone_verification_user_id")
+  @@index([phone_number], map: "idx_phone_verification_phone")
+  @@index([expires_at], map: "idx_phone_verification_expires")
+}
+
+model onboarding_sessions {
+  id                  BigInt    @id @default(autoincrement())
+  session_id          String    @unique @db.VarChar(100)
+  user_id             BigInt    @unique
+  current_step        Int?      @default(1)
+  total_steps         Int?      @default(10)
+  step_data           Json?     @default("{}")
+  verification_status Json?     @default("{\"email\": {\"isVerified\": false}, \"phone\": {\"isVerified\": false}}")
+  is_completed        Boolean?  @default(false)
+  completed_at        DateTime? @db.Timestamptz(6)
+  created_at          DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime? @default(now()) @db.Timestamptz(6)
+  users               users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_onboarding_sessions_user_id")
+  @@index([session_id], map: "idx_onboarding_sessions_session_id")
+  @@index([is_completed], map: "idx_onboarding_sessions_status")
+  @@index([updated_at], map: "idx_onboarding_sessions_updated")
+}
+
+model auth_audit_log {
+  id            BigInt    @id @default(autoincrement())
+  user_id       BigInt?
+  action        String    @db.VarChar(100)
+  metadata      Json?     @default("{}")
+  ip_address    String?   @db.VarChar(45)
+  user_agent    String?
+  success       Boolean?  @default(true)
+  error_message String?
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  users         users?    @relation(fields: [user_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_auth_audit_user_id")
+  @@index([action], map: "idx_auth_audit_action")
+  @@index([created_at], map: "idx_auth_audit_created_at")
+  @@index([success], map: "idx_auth_audit_success")
+}
+
+model session_tokens {
+  id                BigInt    @id @default(autoincrement())
+  user_id           BigInt
+  token_hash        String    @unique @db.VarChar(255)
+  session_data      Json?     @default("{}")
+  expires_at        DateTime  @db.Timestamptz(6)
+  last_accessed_at  DateTime? @default(now()) @db.Timestamptz(6)
+  created_at        DateTime? @default(now()) @db.Timestamptz(6)
+  users             users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_session_tokens_user_id")
+  @@index([token_hash], map: "idx_session_tokens_hash")
+  @@index([expires_at], map: "idx_session_tokens_expires")
+  @@index([last_accessed_at], map: "idx_session_tokens_accessed")
+}
+
+model user_login_history {
+  id                       BigInt    @id @default(autoincrement())
+  user_id                  BigInt
+  login_at                 DateTime? @default(now()) @db.Timestamptz(6)
+  logout_at                DateTime? @db.Timestamptz(6)
+  ip_address               String?   @db.VarChar(45)
+  user_agent               String?
+  device_info              Json?     @default("{}")
+  auth_provider            String?   @default("cognito") @db.VarChar(50)
+  login_method             String?   @default("email_password") @db.VarChar(50)
+  success                  Boolean?  @default(true)
+  failure_reason           String?
+  session_duration_minutes Int?
+  users                    users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_login_history_user_id")
+  @@index([login_at], map: "idx_login_history_login_at")
+  @@index([success], map: "idx_login_history_success")
+  @@index([auth_provider], map: "idx_login_history_provider")
 }

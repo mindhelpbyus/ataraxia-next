@@ -15,8 +15,8 @@ const app = new cdk.App();
 
 // Get environment from context or default to dev
 const environment = app.node.tryGetContext('environment') || 'dev';
-const account = app.node.tryGetContext('account') || process.env.CDK_DEFAULT_ACCOUNT;
-const region = app.node.tryGetContext('region') || process.env.CDK_DEFAULT_REGION || 'us-west-2';
+const account = app.node.tryGetContext('account') || process.env.CDK_DEFAULT_ACCOUNT || process.env.AWS_ACCOUNT_ID;
+const region = app.node.tryGetContext('region') || process.env.CDK_DEFAULT_REGION || process.env.AWS_REGION || 'us-west-2';
 
 // Environment-specific configuration
 const envConfig = {
@@ -24,7 +24,7 @@ const envConfig = {
     databaseUrl: 'postgresql://ataraxia_user:ataraxia_password@localhost:5432/ataraxia_db'
   },
   dev: {
-    databaseUrl: 'postgresql://app_user:ChangeMe123!@dev-db-cluster.cluster-cliy2m6q8h4h.us-west-2.rds.amazonaws.com:5432/ataraxia_db'
+    databaseUrl: process.env.DATABASE_URL || 'postgresql://app_user:ChangeMe123!@dev-db-cluster.cluster-cliy2m6q8h4h.us-west-2.rds.amazonaws.com:5432/ataraxia_db'
   },
   staging: {
     databaseUrl: process.env.STAGING_DATABASE_URL || 'postgresql://placeholder'
@@ -44,11 +44,11 @@ new AtaraxiaStack(app, `AtaraxiaStack-${environment}`, {
   },
   environment: environment as 'local' | 'dev' | 'staging' | 'prod',
   ...envConfig[environment as keyof typeof envConfig],
-  
+
   // Stack configuration
   stackName: `ataraxia-healthcare-${environment}`,
   description: `Ataraxia Healthcare Platform - ${environment.toUpperCase()} environment`,
-  
+
   // Tags for resource management
   tags: {
     Project: 'Ataraxia',

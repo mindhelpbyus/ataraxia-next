@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-01-31T23:08:55Z",
+  "status": "READY",
+  "aws": {
+    "accountId": "123456789012",
+    "region": "us-west-2",
+    "credentialsValid": true
+  },
+  "environment": {
+    "nodeVersion": "v22.14.0",
+    "awsCliVersion": "2.33.6",
+    "cdkVersion": "2.1103.0 (build ba59816)"
+  },
+  "configuration": {
+    "envFilesFound": 2,
+    "criticalVarsPresent": 5,
+    "criticalVarsTotal": 5,
+    "missingVars": [
+  ""
+]
+  }
+}

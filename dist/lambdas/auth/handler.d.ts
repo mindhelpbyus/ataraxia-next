@@ -1,12 +1,8 @@
 /**
- * Auth Lambda Handler - Complete Cognito + PostgreSQL Authentication System
+ * Auth Lambda Handler - Cloud Agnostic + Prisma Implementation
  *
- * Handles all authentication operations including:
- * - User login and registration
- * - Password reset and change
- * - Phone and Google OAuth
- * - Therapist registration workflow
- * - JWT token verification
+ * Handles authentication using the abstract AuthProvider and Prisma ORM.
+ * Replaces legacy SQL with Prisma Client for all database interactions.
  */
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 export declare const handler: (event: APIGatewayProxyEvent) => Promise<APIGatewayProxyResult>;

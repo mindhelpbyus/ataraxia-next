@@ -1,10 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ataraxia Complete Deployment Dashboard</title>
+    <title>Ataraxia Deployment Command Center</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
     <style>
+        :root {
+            --bg-dark: #0f1115;
+            --bg-card: #161b22;
+            --border-color: #30363d;
+            --accent-primary: #58a6ff;
+            --accent-success: #238636;
+            --accent-danger: #da3633;
+            --accent-warning: #d29922;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -12,720 +28,619 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
             min-height: 100vh;
-            color: #333;
+            display: flex;
+            flex-direction: column;
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1800px;
             margin: 0 auto;
             padding: 20px;
+            width: 100%;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            color: white;
-        }
-
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-        }
-
-        .header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
-        }
-
-        .deployment-card {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            transition: transform 0.3s ease;
-        }
-
-        .deployment-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .card-header {
+        header {
             display: flex;
+            justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
         }
 
-        .card-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 15px;
-            font-size: 24px;
-        }
-
-        .local-icon {
-            background: linear-gradient(135deg, #4CAF50, #45a049);
-            color: white;
-        }
-
-        .cloud-icon {
-            background: linear-gradient(135deg, #2196F3, #1976D2);
-            color: white;
-        }
-
-        .card-title {
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
             font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo svg {
+            width: 32px;
+            height: 32px;
+        }
+
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
             font-weight: 600;
-            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .card-subtitle {
-            color: #666;
-            font-size: 0.9rem;
+        .status-badge.connected {
+            background-color: rgba(35, 134, 54, 0.2);
+            color: #3fb950;
+            border: 1px solid rgba(35, 134, 54, 0.5);
         }
 
-        .service-selector {
-            margin-bottom: 20px;
+        .status-badge.disconnected {
+            background-color: rgba(218, 54, 51, 0.2);
+            color: #f85149;
+            border: 1px solid rgba(218, 54, 51, 0.5);
         }
 
-        .service-selector label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #555;
+        .pulse {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: currentColor;
+            animation: pulse 2s infinite;
         }
 
-        .service-selector select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e1e5e9;
-            border-radius: 8px;
-            font-size: 14px;
-            background: white;
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.5;
+                transform: scale(1.2);
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
         }
 
-        .deploy-button {
-            width: 100%;
-            padding: 15px;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 10px;
-        }
-
-        .local-deploy {
-            background: linear-gradient(135deg, #4CAF50, #45a049);
-            color: white;
-        }
-
-        .local-deploy:hover {
-            background: linear-gradient(135deg, #45a049, #3d8b40);
-        }
-
-        .cloud-deploy {
-            background: linear-gradient(135deg, #2196F3, #1976D2);
-            color: white;
-        }
-
-        .cloud-deploy:hover {
-            background: linear-gradient(135deg, #1976D2, #1565C0);
-        }
-
-        .stop-button {
-            background: linear-gradient(135deg, #f44336, #d32f2f);
-            color: white;
-        }
-
-        .stop-button:hover {
-            background: linear-gradient(135deg, #d32f2f, #c62828);
-        }
-
-        .status-section {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-        }
-
-        .status-grid {
+        .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(12, 1fr);
             gap: 20px;
-            margin-bottom: 20px;
         }
 
-        .status-item {
-            text-align: center;
-            padding: 15px;
-            border-radius: 10px;
-            background: #f8f9fa;
-        }
-
-        .status-value {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-
-        .status-label {
-            color: #666;
-            font-size: 0.9rem;
-        }
-
-        .logs-section {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
-
-        .logs-header {
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 20px;
             display: flex;
-            justify-content: between;
+            flex-direction: column;
+        }
+
+        .card h2 {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            display: flex;
             align-items: center;
+            gap: 10px;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .col-4 {
+            grid-column: span 4;
+        }
+
+        .col-6 {
+            grid-column: span 6;
+        }
+
+        .col-8 {
+            grid-column: span 8;
+        }
+
+        .col-12 {
+            grid-column: span 12;
+        }
+
+        @media (max-width: 1200px) {
+            .col-6 {
+                grid-column: span 12;
+            }
+        }
+
+        /* Controls */
+        .control-group {
             margin-bottom: 15px;
         }
 
-        .logs-container {
-            background: #1e1e1e;
-            color: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            height: 400px;
-            overflow-y: auto;
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 13px;
-            line-height: 1.4;
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
         }
 
-        .log-entry {
-            margin-bottom: 5px;
-            padding: 2px 0;
+        select {
+            width: 100%;
+            padding: 8px 12px;
+            background-color: #0d1117;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: inherit;
         }
 
-        .log-info { color: #4CAF50; }
-        .log-warning { color: #FF9800; }
-        .log-error { color: #f44336; }
-        .log-success { color: #8BC34A; }
-
-        .api-test-section {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            margin-top: 30px;
+        .btn-group {
+            display: flex;
+            gap: 10px;
         }
 
-        .api-endpoints {
+        button {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-success);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #2ea043;
+        }
+
+        .btn-blue {
+            background-color: #1f6feb;
+            color: white;
+        }
+
+        .btn-blue:hover {
+            background-color: #388bfd;
+        }
+
+        .btn-danger {
+            background-color: var(--bg-card);
+            color: var(--accent-danger);
+            border-color: var(--border-color);
+        }
+
+        .btn-danger:hover {
+            background-color: rgba(218, 54, 51, 0.1);
+        }
+
+        /* Status Grid */
+        .status-monitor {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: 1fr 1fr;
             gap: 15px;
         }
 
-        .api-endpoint {
+        .status-indicator {
+            background-color: #0d1117;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
             display: flex;
+            flex-direction: column;
             align-items: center;
-            padding: 12px;
-            border: 2px solid #e1e5e9;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .api-endpoint:hover {
-            border-color: #2196F3;
-        }
-
-        .api-method {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 600;
-            margin-right: 10px;
-            min-width: 50px;
             text-align: center;
         }
 
-        .method-get { background: #4CAF50; color: white; }
-        .method-post { background: #2196F3; color: white; }
-        .method-put { background: #FF9800; color: white; }
-        .method-delete { background: #f44336; color: white; }
+        .status-indicator .value {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
 
-        .api-status {
+        .status-indicator .label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* Logs - BIGGER AND FULL WIDTH */
+        .logs-container {
+            background-color: #0d1117;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            height: 600px;
+            /* Increased height */
+            overflow-y: auto;
+            padding: 20px;
+            /* More padding */
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            /* Larger font */
+            white-space: pre-wrap;
+            /* Better wrapping */
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+            line-height: 1.5;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            border-bottom: 1px solid rgba(48, 54, 61, 0.3);
+            /* Subtle separator */
+            padding-bottom: 2px;
+        }
+
+        .log-time {
+            color: var(--text-secondary);
+            min-width: 100px;
+            font-size: 0.85rem;
+        }
+
+        .log-msg {
+            word-break: break-word;
+            flex: 1;
+        }
+
+        .log-info {
+            color: var(--text-primary);
+        }
+
+        .log-success {
+            color: #3fb950;
+        }
+
+        .log-warning {
+            color: var(--accent-warning);
+        }
+
+        .log-error {
+            color: #f85149;
+        }
+
+        /* API Grid */
+        .api-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 10px;
+        }
+
+        .api-item {
+            background-color: #0d1117;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+        }
+
+        .api-status-dot {
             margin-left: auto;
-            width: 12px;
-            height: 12px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
-            background: #ccc;
+            background-color: var(--border-color);
         }
 
-        .api-status.success { background: #4CAF50; }
-        .api-status.error { background: #f44336; }
-        .api-status.testing { background: #FF9800; }
-
-        .connection-status {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 10px 15px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 500;
+        .api-status-dot.success {
+            background-color: #3fb950;
+            box-shadow: 0 0 5px rgba(63, 185, 80, 0.4);
         }
 
-        .connected {
-            background: #4CAF50;
-            color: white;
+        .api-status-dot.error {
+            background-color: #f85149;
+            box-shadow: 0 0 5px rgba(248, 81, 73, 0.4);
         }
 
-        .disconnected {
-            background: #f44336;
-            color: white;
+        /* Two Column Layout Helper */
+        .split-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
         }
 
         @media (max-width: 768px) {
-            .dashboard-grid {
+            .split-layout {
                 grid-template-columns: 1fr;
-            }
-            
-            .status-grid {
-                grid-template-columns: repeat(2, 1fr);
             }
         }
     </style>
 </head>
+
 <body>
-    <div class="connection-status" id="connectionStatus">Connecting...</div>
-    
     <div class="container">
-        <div class="header">
-            <h1>🚀 Ataraxia Deployment Dashboard</h1>
-            <p>Complete deployment system for local development and AWS CDK</p>
-        </div>
+        <header>
+            <div class="logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                </svg>
+                Ataraxia Command Center
+            </div>
+            <div class="status-badge" id="connectionStatus">
+                <div class="pulse"></div>
+                <span id="connText">Connecting...</span>
+            </div>
+        </header>
 
-        <div class="dashboard-grid">
-            <!-- Local Development Card -->
-            <div class="deployment-card">
-                <div class="card-header">
-                    <div class="card-icon local-icon">💻</div>
-                    <div>
-                        <div class="card-title">Local Development</div>
-                        <div class="card-subtitle">Run services locally for development</div>
+        <div class="grid">
+            <!-- Top Role: Operations & Status -->
+
+            <!-- Left Half: Operations -->
+            <div class="col-6">
+                <!-- Local -->
+                <div class="card" style="margin-bottom: 20px;">
+                    <h2>🖥️ Local Environment</h2>
+                    <div class="control-group">
+                        <label>Service Target</label>
+                        <select id="localService">
+                            <option value="all">Full Stack (All Services)</option>
+                            <option value="therapist">Therapist Service</option>
+                            <option value="auth">Auth Service</option>
+                            <option value="client">Client Service</option>
+                            <option value="verification">Verification Service</option>
+                            <option value="api-explorer">API Explorer UI</option>
+                        </select>
+                    </div>
+                    <div class="split-layout">
+                        <div class="btn-group">
+                            <button class="btn-primary" onclick="startLocal()">Start Local Dev</button>
+                            <button class="btn-danger" onclick="stopLocal()">Stop</button>
+                        </div>
+                        <div class="status-monitor">
+                            <div class="status-indicator">
+                                <div class="value" id="localStatusDisplay" style="color: var(--text-secondary);">Stopped
+                                </div>
+                                <div class="label">Status</div>
+                            </div>
+                            <div class="status-indicator">
+                                <div class="value" id="portDisplay">--</div>
+                                <div class="label">Port</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="service-selector">
-                    <label for="localService">Select Service:</label>
-                    <select id="localService">
-                        <option value="all">All Services (Full API Server)</option>
-                        <option value="therapist">Therapist Service Only</option>
-                        <option value="auth">Authentication Service Only</option>
-                        <option value="client">Client Service Only</option>
-                        <option value="verification">Verification Service Only</option>
-                        <option value="api-explorer">API Explorer Only</option>
-                    </select>
-                </div>
-
-                <button class="deploy-button local-deploy" onclick="startLocalDeployment()">
-                    🚀 Start Local Development
-                </button>
-                <button class="deploy-button stop-button" onclick="stopLocalDeployment()">
-                    ⏹️ Stop Local Services
-                </button>
-            </div>
-
-            <!-- AWS CDK Card -->
-            <div class="deployment-card">
-                <div class="card-header">
-                    <div class="card-icon cloud-icon">☁️</div>
-                    <div>
-                        <div class="card-title">AWS CDK Deployment</div>
-                        <div class="card-subtitle">Deploy to AWS Lambda & API Gateway</div>
+                <!-- Cloud -->
+                <div class="card">
+                    <h2>☁️ AWS Cloud Deployment</h2>
+                    <div class="control-group">
+                        <label>Stack Target</label>
+                        <select id="cloudService">
+                            <option value="all">Complete Production Stack</option>
+                            <option value="therapist">Therapist Lambda</option>
+                            <option value="auth">Auth Lambda</option>
+                            <option value="infrastructure">Core Infrastructure</option>
+                        </select>
+                    </div>
+                    <div class="split-layout">
+                        <div class="btn-group">
+                            <button class="btn-blue" onclick="startCloud()">Deploy</button>
+                            <button class="btn-danger" onclick="stopCloud()">Abort</button>
+                        </div>
+                        <div class="status-monitor">
+                            <div class="status-indicator">
+                                <div class="value" id="cloudStatusDisplay" style="color: var(--text-secondary);">Idle
+                                </div>
+                                <div class="label">Cloud Status</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <div class="service-selector">
-                    <label for="cloudService">Select Service:</label>
-                    <select id="cloudService">
-                        <option value="all">Complete Stack (All Services)</option>
-                        <option value="therapist">Therapist Service Only</option>
-                        <option value="auth">Authentication Only</option>
-                        <option value="client">Client Service Only</option>
-                        <option value="verification">Verification Only</option>
-                        <option value="infrastructure">Infrastructure Only</option>
-                    </select>
+            <!-- Right Half: Monitoring -->
+            <div class="col-6">
+                <div class="card" style="margin-bottom: 20px;">
+                    <h2>❤️ System Health</h2>
+                    <div class="api-grid">
+                        <div class="api-item"><span>Postgres DB</span>
+                            <div class="api-status-dot" id="dbDot"></div>
+                        </div>
+                        <div class="api-item"><span>Cognito Auth</span>
+                            <div class="api-status-dot" id="authDot"></div>
+                        </div>
+                        <div class="api-item"><span>API Gateway</span>
+                            <div class="api-status-dot" id="apiDot"></div>
+                        </div>
+                    </div>
+                    <button class="btn-blue" style="margin-top: 15px; width: 100%;" onclick="runHealthCheck()">Run
+                        Diagnostics</button>
                 </div>
 
-                <button class="deploy-button cloud-deploy" onclick="startCloudDeployment()">
-                    ☁️ Deploy to AWS
-                </button>
-                <button class="deploy-button stop-button" onclick="stopCloudDeployment()">
-                    ⏹️ Stop Deployment
-                </button>
-            </div>
-        </div>
+                <div class="split-layout">
+                    <div class="card" style="height: 100%;">
+                        <h2>📋 Verification Queue <span
+                                style="font-size: 0.75rem; background: var(--accent-primary); color: #000; padding: 2px 6px; border-radius: 10px; margin-left: auto;">Live</span>
+                        </h2>
+                        <div id="verificationQueue"
+                            style="font-size: 0.85rem; color: var(--text-secondary); text-align: center; padding: 20px;">
+                            Waiting for live data...
+                        </div>
+                    </div>
 
-        <!-- Status Section -->
-        <div class="status-section">
-            <h2>📊 Deployment Status</h2>
-            <div class="status-grid">
-                <div class="status-item">
-                    <div class="status-value" id="localStatus">Stopped</div>
-                    <div class="status-label">Local Services</div>
-                </div>
-                <div class="status-item">
-                    <div class="status-value" id="cloudStatus">Not Deployed</div>
-                    <div class="status-label">AWS Deployment</div>
-                </div>
-                <div class="status-item">
-                    <div class="status-value" id="databaseStatus">Checking...</div>
-                    <div class="status-label">Database</div>
-                </div>
-                <div class="status-item">
-                    <div class="status-value" id="apiStatus">Unknown</div>
-                    <div class="status-label">API Health</div>
+                    <div class="card" style="height: 100%;">
+                        <h2>🔗 Quick Links</h2>
+                        <a href="/api-explorer.html" target="_blank"
+                            style="display: block; padding: 12px; background: #0d1117; border: 1px solid var(--border-color); border-radius: 6px; text-decoration: none; color: var(--accent-primary); text-align: center; font-weight: 600;">
+                            Open API Explorer ↗
+                        </a>
+                        <div
+                            style="margin-top: 10px; font-size: 0.8rem; color: var(--text-secondary); text-align: center;">
+                            Use Explorer to test endpoints manually.
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Logs Section -->
-        <div class="logs-section">
-            <div class="logs-header">
-                <h2>📝 Deployment Logs</h2>
-                <button onclick="clearLogs()" style="padding: 8px 15px; border: none; border-radius: 5px; background: #f44336; color: white; cursor: pointer;">Clear Logs</button>
-            </div>
-            <div class="logs-container" id="logsContainer">
-                <div class="log-entry log-info">🚀 Deployment dashboard initialized</div>
-                <div class="log-entry log-info">📡 Connecting to deployment server...</div>
-            </div>
-        </div>
-
-        <!-- API Testing Section -->
-        <div class="api-test-section">
-            <h2>🧪 API Endpoint Testing</h2>
-            <div style="margin-bottom: 20px;">
-                <button onclick="testApiEndpoints()" style="padding: 12px 20px; border: none; border-radius: 8px; background: #2196F3; color: white; cursor: pointer; font-weight: 600;">
-                    🧪 Test All API Endpoints
-                </button>
-                <span style="margin-left: 15px; color: #666;">Test the deployed API endpoints</span>
-            </div>
-            <div class="api-endpoints" id="apiEndpoints">
-                <!-- API endpoints will be populated here -->
+            <!-- Bottom Row: Logs (Full Width) -->
+            <div class="col-12">
+                <div class="card" style="height: 100%;">
+                    <h2>
+                        📝 System Logs
+                        <div style="margin-left: auto; display: flex; gap: 10px;">
+                            <span
+                                style="font-size: 0.75rem; color: var(--text-secondary); padding-top: 2px;">Auto-scrolling
+                                enabled</span>
+                            <button onclick="clearLogs()"
+                                style="padding: 4px 12px; font-size: 0.75rem; background: transparent; border: 1px solid var(--border-color); color: var(--text-primary);">Clear
+                                Logs</button>
+                        </div>
+                    </h2>
+                    <div class="logs-container" id="logsContainer">
+                        <div class="log-entry log-info"><span class="log-time">System</span><span
+                                class="log-msg">Dashboard initialized. Layout updated for max visibility.</span></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Configuration
-        const API_BASE_URL = 'http://localhost:3012';
+        // Config
+        const API_URL = 'http://localhost:3012';
         const WS_URL = 'ws://localhost:3012';
-        
-        // State
-        let ws = null;
-        let deploymentState = {
-            local: { status: 'stopped', service: 'all' },
-            cloud: { status: 'not_deployed', service: 'all' },
-            database: { status: 'unknown' },
-            api: { status: 'unknown', endpoints: [] }
-        };
+        let ws;
 
-        // WebSocket connection
-        function connectWebSocket() {
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            connectWs();
+            pollStatus();
+        });
+
+        function connectWs() {
+            const statusBadge = document.getElementById('connectionStatus');
+            const statusText = document.getElementById('connText');
+
             try {
                 ws = new WebSocket(WS_URL);
-                
-                ws.onopen = function() {
-                    updateConnectionStatus(true);
-                    addLog('success', '📡 Connected to deployment server');
+                ws.onopen = () => {
+                    statusBadge.className = 'status-badge connected';
+                    statusText.textContent = 'Connected';
+                    log('System', 'WebSocket connected', 'success');
                 };
-                
-                ws.onmessage = function(event) {
-                    try {
-                        const data = JSON.parse(event.data);
-                        handleWebSocketMessage(data);
-                    } catch (error) {
-                        addLog('warning', 'Received invalid message from server');
+                ws.onclose = () => {
+                    statusBadge.className = 'status-badge disconnected';
+                    statusText.textContent = 'Disconnected';
+                    log('System', 'WebSocket disconnected. Retrying...', 'warning');
+                    setTimeout(connectWs, 3000);
+                };
+                ws.onmessage = (e) => {
+                    const msg = JSON.parse(e.data);
+                    if (msg.type === 'log') {
+                        log(msg.data.type, msg.data.message, msg.data.level);
+                    } else if (msg.type === 'state') {
+                        updateState(msg.data);
                     }
                 };
-                
-                ws.onclose = function() {
-                    updateConnectionStatus(false);
-                    addLog('warning', '📡 Disconnected from deployment server');
-                    // Attempt to reconnect after 3 seconds
-                    setTimeout(connectWebSocket, 3000);
-                };
-                
-                ws.onerror = function(error) {
-                    updateConnectionStatus(false);
-                    addLog('error', '❌ WebSocket connection error');
-                };
-            } catch (error) {
-                updateConnectionStatus(false);
-                addLog('error', '❌ Failed to connect to deployment server');
-                // Attempt to reconnect after 5 seconds
-                setTimeout(connectWebSocket, 5000);
+            } catch (e) {
+                console.error(e);
             }
         }
 
-        function handleWebSocketMessage(data) {
-            switch (data.type) {
-                case 'log':
-                    addLog(data.level || 'info', data.message);
-                    break;
-                case 'status':
-                    updateDeploymentStatus(data.status);
-                    break;
-                case 'api_test':
-                    updateApiEndpointStatus(data.endpoint, data.status);
-                    break;
-                default:
-                    console.log('Unknown message type:', data.type);
-            }
+        function updateState(state) {
+            // Local
+            const localStatus = document.getElementById('localStatusDisplay');
+            localStatus.textContent = state.local.status.toUpperCase();
+            localStatus.style.color = state.local.status === 'running' ? '#3fb950' : '#8b949e';
+            document.getElementById('portDisplay').textContent = state.local.port || '--';
+
+            // Cloud
+            const cloudStatus = document.getElementById('cloudStatusDisplay');
+            cloudStatus.textContent = state.cloud.status.toUpperCase();
+            cloudStatus.style.color = state.cloud.status === 'deployed' ? '#3fb950' :
+                state.cloud.status === 'deploying' ? '#d29922' : '#8b949e';
+
+            // Health
+            setDot('dbDot', state.database.status === 'connected');
+            setDot('apiDot', state.api.status === 'healthy');
         }
 
-        function updateConnectionStatus(connected) {
-            const statusEl = document.getElementById('connectionStatus');
-            if (connected) {
-                statusEl.textContent = '🟢 Connected';
-                statusEl.className = 'connection-status connected';
-            } else {
-                statusEl.textContent = '🔴 Disconnected';
-                statusEl.className = 'connection-status disconnected';
-            }
+        function setDot(id, success) {
+            const el = document.getElementById(id);
+            el.className = `api-status-dot ${success ? 'success' : 'error'}`;
         }
 
-        function updateDeploymentStatus(status) {
-            if (status.local) {
-                document.getElementById('localStatus').textContent = status.local;
-                deploymentState.local.status = status.local;
-            }
-            if (status.cloud) {
-                document.getElementById('cloudStatus').textContent = status.cloud;
-                deploymentState.cloud.status = status.cloud;
-            }
-            if (status.database) {
-                document.getElementById('databaseStatus').textContent = status.database;
-                deploymentState.database.status = status.database;
-            }
-            if (status.api) {
-                document.getElementById('apiStatus').textContent = status.api;
-                deploymentState.api.status = status.api;
-            }
-        }
+        function log(source, msg, level = 'info') {
+            const container = document.getElementById('logsContainer');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
 
-        // Deployment functions
-        async function startLocalDeployment() {
-            const service = document.getElementById('localService').value;
-            addLog('info', `🚀 Starting local deployment for: ${service}`);
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/deployment/local/start`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ service })
-                });
-                
-                const result = await response.json();
-                if (result.success) {
-                    addLog('success', `✅ Local deployment started successfully on port ${result.port}`);
-                } else {
-                    addLog('error', `❌ Local deployment failed: ${result.message}`);
-                }
-            } catch (error) {
-                addLog('error', `❌ Failed to start local deployment: ${error.message}`);
-            }
-        }
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+            const colorClass = `log-${level}`;
 
-        async function stopLocalDeployment() {
-            addLog('info', '⏹️ Stopping local services...');
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/deployment/local/stop`, {
-                    method: 'POST'
-                });
-                
-                const result = await response.json();
-                if (result.success) {
-                    addLog('success', '✅ Local services stopped');
-                } else {
-                    addLog('error', `❌ Failed to stop local services: ${result.message}`);
-                }
-            } catch (error) {
-                addLog('error', `❌ Failed to stop local services: ${error.message}`);
-            }
-        }
-
-        async function startCloudDeployment() {
-            const service = document.getElementById('cloudService').value;
-            addLog('info', `☁️ Starting AWS CDK deployment for: ${service}`);
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/deployment/cloud/start`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ service, environment: 'dev' })
-                });
-                
-                const result = await response.json();
-                if (result.success) {
-                    addLog('success', `✅ AWS CDK deployment started (${result.deploymentId})`);
-                } else {
-                    addLog('error', `❌ AWS deployment failed: ${result.message}`);
-                }
-            } catch (error) {
-                addLog('error', `❌ Failed to start AWS deployment: ${error.message}`);
-            }
-        }
-
-        async function stopCloudDeployment() {
-            addLog('info', '⏹️ Stopping AWS deployment...');
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/deployment/cloud/stop`, {
-                    method: 'POST'
-                });
-                
-                const result = await response.json();
-                if (result.success) {
-                    addLog('success', '✅ AWS deployment stopped');
-                } else {
-                    addLog('error', `❌ Failed to stop AWS deployment: ${result.message}`);
-                }
-            } catch (error) {
-                addLog('error', `❌ Failed to stop AWS deployment: ${error.message}`);
-            }
-        }
-
-        async function testApiEndpoints() {
-            addLog('info', '🧪 Starting API endpoint testing...');
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/test-endpoints`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({})
-                });
-                
-                const result = await response.json();
-                if (result.success) {
-                    addLog('success', `✅ API testing completed: ${result.results.filter(r => r.success).length}/${result.results.length} passed`);
-                    updateApiEndpoints(result.results);
-                } else {
-                    addLog('error', `❌ API testing failed: ${result.message}`);
-                }
-            } catch (error) {
-                addLog('error', `❌ Failed to test API endpoints: ${error.message}`);
-            }
-        }
-
-        // Utility functions
-        function addLog(level, message) {
-            const logsContainer = document.getElementById('logsContainer');
-            const timestamp = new Date().toLocaleTimeString();
-            const logEntry = document.createElement('div');
-            logEntry.className = `log-entry log-${level}`;
-            logEntry.textContent = `[${timestamp}] ${message}`;
-            
-            logsContainer.appendChild(logEntry);
-            logsContainer.scrollTop = logsContainer.scrollHeight;
+            entry.innerHTML = `<span class="log-time">[${time}]</span><span class="log-msg ${colorClass}">${msg}</span>`;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
         }
 
         function clearLogs() {
             document.getElementById('logsContainer').innerHTML = '';
-            addLog('info', '📝 Logs cleared');
         }
 
-        function initializeApiEndpoints() {
-            const endpoints = [
-                { method: 'GET', path: '/api/therapist', description: 'List therapists' },
-                { method: 'GET', path: '/api/therapist/search', description: 'Search therapists' },
-                { method: 'GET', path: '/api/therapist/{id}', description: 'Get therapist by ID' },
-                { method: 'POST', path: '/api/auth/login', description: 'Authentication' },
-                { method: 'GET', path: '/api/verification/pending', description: 'Pending verifications' }
-            ];
-
-            const container = document.getElementById('apiEndpoints');
-            container.innerHTML = '';
-
-            endpoints.forEach((endpoint, index) => {
-                const endpointEl = document.createElement('div');
-                endpointEl.className = 'api-endpoint';
-                endpointEl.innerHTML = `
-                    <span class="api-method method-${endpoint.method.toLowerCase()}">${endpoint.method}</span>
-                    <span>${endpoint.path}</span>
-                    <span style="margin-left: 10px; color: #666; font-size: 0.9em;">${endpoint.description}</span>
-                    <div class="api-status" id="endpoint-${index}"></div>
-                `;
-                container.appendChild(endpointEl);
+        // Actions
+        async function startLocal() {
+            const service = document.getElementById('localService').value;
+            await fetch(`${API_URL}/api/deployment/local/start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ service })
             });
         }
 
-        function updateApiEndpointStatus(endpointIndex, status) {
-            const statusEl = document.getElementById(`endpoint-${endpointIndex}`);
-            if (statusEl) {
-                statusEl.className = `api-status ${status}`;
-            }
+        async function stopLocal() {
+            await fetch(`${API_URL}/api/deployment/local/stop`, { method: 'POST' });
         }
 
-        function updateApiEndpoints(results) {
-            const container = document.getElementById('apiEndpoints');
-            container.innerHTML = '';
-
-            results.forEach((result, index) => {
-                const endpointEl = document.createElement('div');
-                endpointEl.className = 'api-endpoint';
-                
-                const statusClass = result.success ? 'success' : 'error';
-                const statusText = result.success ? `✓ ${result.status}` : `✗ ${result.status || 'Error'}`;
-                const responseTime = result.responseTime ? `${result.responseTime}ms` : 'N/A';
-                
-                endpointEl.innerHTML = `
-                    <span class="api-method method-${result.method.toLowerCase()}">${result.method}</span>
-                    <span>${result.path}</span>
-                    <span style="margin-left: 10px; color: #666; font-size: 0.9em;">${result.description}</span>
-                    <span style="margin-left: auto; font-size: 0.8em; color: #999;">${responseTime}</span>
-                    <div class="api-status ${statusClass}" title="${statusText}"></div>
-                `;
-                container.appendChild(endpointEl);
+        async function startCloud() {
+            const service = document.getElementById('cloudService').value;
+            await fetch(`${API_URL}/api/deployment/cloud/start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ service })
             });
         }
 
-        // Initialize dashboard
-        document.addEventListener('DOMContentLoaded', function() {
-            addLog('info', '🚀 Initializing deployment dashboard...');
-            initializeApiEndpoints();
-            connectWebSocket();
-            
-            // Check initial status
-            setTimeout(checkInitialStatus, 1000);
-        });
+        async function stopCloud() {
+            await fetch(`${API_URL}/api/deployment/cloud/stop`, { method: 'POST' });
+        }
 
-        async function checkInitialStatus() {
+        async function runHealthCheck() {
+            log('Diagnostics', 'Running health checks...', 'info');
             try {
-                const response = await fetch(`${API_BASE_URL}/api/status`);
-                const status = await response.json();
-                updateDeploymentStatus(status);
-                addLog('success', '✅ Initial status loaded');
-            } catch (error) {
-                addLog('warning', '⚠️ Could not load initial status');
+                const res = await fetch(`${API_URL}/api/status`);
+                const data = await res.json();
+                await fetch(`${API_URL}/api/test-endpoints`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+            } catch (e) {
+                log('Diagnostics', 'Health check failed', 'error');
             }
+        }
+
+        async function pollStatus() {
+            try {
+                const res = await fetch(`${API_URL}/api/status`);
+                const data = await res.json();
+                const queue = document.getElementById('verificationQueue');
+                queue.textContent = "No pending verifications found.";
+            } catch (e) { }
         }
     </script>
 </body>
+
 </html>

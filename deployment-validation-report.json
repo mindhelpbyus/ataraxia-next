@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-01-31T23:08:53.785Z",
+  "services": 14,
+  "envFiles": 2,
+  "errors": [],
+  "warnings": [
+    "Unknown service type: unknown for analytics-service",
+    "Unknown service type: unknown for appointment-service",
+    "Unknown service type: unknown for organization-service",
+    "Unknown service type: unknown for video-service",
+    "AWS CLI not configured - this is OK for local development",
+    "Cognito User Pool us-west-2_xeXlyFBMH not accessible - this is OK for local development"
+  ],
+  "status": "PASS"
+}

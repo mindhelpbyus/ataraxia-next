@@ -1,7 +1,7 @@
 /**
  * Verification Lambda Handler - Modern Therapist Registration & Verification System
  *
- * Handles all verification-related operations including:
+ * Handles all verification-related operations using Prisma ORM:
  * - Therapist registration workflow
  * - Document upload and verification
  * - Background check integration

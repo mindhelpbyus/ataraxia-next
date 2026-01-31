@@ -17,6 +17,10 @@ cp -r node_modules/ecdsa-sig-formatter dist/node_modules/ 2>/dev/null || true
 cp -r node_modules/safe-buffer dist/node_modules/ 2>/dev/null || true
 cp -r node_modules/buffer-equal-constant-time dist/node_modules/ 2>/dev/null || true
 
+# Copy aws-jwt-verify (Required for Cognito)
+echo "Copying aws-jwt-verify..."
+cp -r node_modules/aws-jwt-verify dist/node_modules/ 2>/dev/null || true
+
 # Copy pg (PostgreSQL client) and all its dependencies
 echo "Copying pg..."
 cp -r node_modules/pg dist/node_modules/ 2>/dev/null || true
@@ -42,5 +46,14 @@ echo "Copying essential AWS SDK components..."
 # Copy AWS SDK core dependencies (only if they exist)
 # cp -r node_modules/@aws-sdk/types dist/node_modules/@aws-sdk/ 2>/dev/null || true
 # cp -r node_modules/@smithy dist/node_modules/ 2>/dev/null || true
+
+# Copy Prisma Client (Required for database access)
+echo "Copying Prisma Client..."
+mkdir -p dist/node_modules/@prisma
+cp -r node_modules/@prisma/client dist/node_modules/@prisma/ 2>/dev/null || true
+cp -r node_modules/.prisma dist/node_modules/ 2>/dev/null || true
+
+# Copy Prisma engines/schema if needed explicitly (usually in .prisma)
+# cp -r prisma dist/ 2>/dev/null || true
 
 echo "Essential dependencies copied successfully!"
