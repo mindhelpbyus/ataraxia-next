@@ -9,19 +9,44 @@
 const express = require('express');
 const cors = require('cors');
 const { PrismaClient } = require('@prisma/client');
-const { CognitoProvider } = require('./dist/lib/auth/providers/CognitoProvider');
+const { getConfigManager } = require('./dist/lib/configManager');
 require('dotenv').config();
 
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.API_PORT || 3010;
 
-// Initialize Auth Provider
-const authProvider = new CognitoProvider(
-  process.env.AWS_REGION || 'us-west-2',
-  process.env.COGNITO_USER_POOL_ID || 'us-west-2_xeXlyFBMH',
-  process.env.COGNITO_CLIENT_ID || '7ek8kg1td2ps985r21m7727q98'
-);
+// Lazy-loaded Auth Provider instance
+let _authProviderInstance = null;
+
+async function getAuthProvider() {
+  if (_authProviderInstance) return _authProviderInstance;
+
+  console.log('🔄 Fetching Auth Config from Database/Env...');
+  const manager = getConfigManager(prisma);
+  const authConfig = await manager.getAuthConfig();
+
+  console.log('🔄 Initializing Auth Provider:', authConfig.authProviderType);
+
+  if (authConfig.authProviderType === 'firebase') {
+    const { FirebaseProvider } = require('./dist/lib/auth/providers/FirebaseProvider');
+    console.log('🔥 Initializing Firebase Provider');
+    _authProviderInstance = new FirebaseProvider(
+      authConfig.firebaseProjectId,
+      authConfig.firebaseClientEmail,
+      authConfig.firebasePrivateKey
+    );
+  } else {
+    const { CognitoProvider } = require('./dist/lib/auth/providers/CognitoProvider');
+    console.log('☁️ Initializing Cognito Provider');
+    _authProviderInstance = new CognitoProvider(
+      authConfig.cognitoRegion,
+      authConfig.cognitoUserPoolId,
+      authConfig.cognitoClientId
+    );
+  }
+  return _authProviderInstance;
+}
 
 const COGNITO_CONFIG = {
   region: process.env.AWS_REGION || 'us-west-2',
@@ -125,7 +150,7 @@ app.get('/api/config', async (req, res) => {
       const startTime = Date.now();
       const result = await prisma.$queryRaw`SELECT version(), current_database(), current_user`;
       const endTime = Date.now();
-      
+
       if (result && result[0]) {
         dbConnectionTest = {
           status: 'connected',
@@ -178,14 +203,14 @@ app.get('/api/config', async (req, res) => {
         deploymentType: process.env.AWS_LAMBDA_FUNCTION_NAME ? 'AWS Lambda' : 'Local Development',
         timestamp: new Date().toISOString()
       },
-      
+
       database: {
         provider: 'AWS RDS PostgreSQL',
         connectionDetails: dbDetails,
         connectionTest: dbConnectionTest,
         configurationsStored: dbConfigs.length
       },
-      
+
       aws: {
         region: process.env.AWS_REGION || 'not set',
         accountId: process.env.AWS_ACCOUNT_ID ? `${process.env.AWS_ACCOUNT_ID.substring(0, 4)}***` : 'not set',
@@ -214,19 +239,19 @@ app.get('/api/config', async (req, res) => {
           resources: Object.keys(cdkOutputs).length > 0 ? cdkOutputs[Object.keys(cdkOutputs)[0]] : {}
         }
       },
-      
+
       authentication: {
         currentProvider: process.env.AUTH_PROVIDER_TYPE || 'cognito',
         providerSource: process.env.AUTH_PROVIDER_TYPE ? 'ENV' : 'default',
         universalAuthEnabled: process.env.ENABLE_UNIVERSAL_AUTH === 'true',
         jwtConfigured: !!process.env.JWT_SECRET
       },
-      
+
       hybridConfiguration: {
         priority: 'ENV → Database → Default',
         environmentVariables: {
           total: Object.keys(process.env).length,
-          authRelated: Object.keys(process.env).filter(key => 
+          authRelated: Object.keys(process.env).filter(key =>
             key.includes('AUTH') || key.includes('COGNITO') || key.includes('JWT') || key.includes('FIREBASE')
           ).length
         },
@@ -241,7 +266,7 @@ app.get('/api/config', async (req, res) => {
           }))
         }
       },
-      
+
       healthCheck: {
         database: dbConnectionTest.connected,
         authentication: !!(process.env.COGNITO_USER_POOL_ID && process.env.COGNITO_CLIENT_ID),
@@ -304,7 +329,7 @@ app.put('/api/config', async (req, res) => {
         description: updatedConfig.description,
         updatedAt: updatedConfig.updated_at
       },
-      message: envOverride 
+      message: envOverride
         ? `Configuration updated in database, but ENV variable '${key.toUpperCase()}' takes priority`
         : 'Configuration updated successfully',
       timestamp: new Date().toISOString()
@@ -398,7 +423,7 @@ app.delete('/api/config/:key', async (req, res) => {
 
     // Check if ENV variable still exists
     const envValue = process.env[key.toUpperCase()];
-    
+
     res.json({
       success: true,
       key,
@@ -435,7 +460,8 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     // Use AuthProvider abstraction
-    const authResponse = await authProvider.signIn(email, password);
+    const provider = await getAuthProvider();
+    const authResponse = await provider.signIn(email, password);
     const { user: authUser, tokens } = authResponse;
 
     console.log('✅ Authentication successful:', authUser.id);
@@ -524,7 +550,8 @@ app.post('/api/auth/register', async (req, res) => {
 
     // Use AuthProvider abstraction for registration
     try {
-      const userId = await authProvider.signUp(email, password, {
+      const provider = await getAuthProvider();
+      const userId = await provider.signUp(email, password, {
         firstName,
         lastName,
         role,
@@ -599,7 +626,8 @@ app.get('/api/auth/me', async (req, res) => {
     const token = authHeader.substring(7);
 
     // Verify JWT token with AuthProvider
-    const authUser = await authProvider.verifyToken(token);
+    const provider = await getAuthProvider();
+    const authUser = await provider.verifyToken(token);
 
     // Get user from PostgreSQL database
     const user = await prisma.users.findFirst({

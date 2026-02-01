@@ -18,15 +18,17 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000,
 });
 
+
 // Enhanced query function with schema path enforcement
 export async function query(text: string, params?: any[]): Promise<any> {
   const client = await pool.connect();
-  
+  const schema = process.env.DATABASE_SCHEMA || 'ataraxia';
+
   try {
     // ALWAYS set search path before any query
-    await client.query('SET search_path TO ataraxia, public');
-    console.log('Database search path set to: ataraxia, public');
-    
+    await client.query(`SET search_path TO ${schema}, public`);
+    console.log(`Database search path set to: ${schema}, public`);
+
     const result = await client.query(text, params);
     return result.rows;
   } finally {
@@ -44,7 +46,8 @@ export async function queryOne(text: string, params?: any[]): Promise<any> {
 export async function testConnection(): Promise<boolean> {
   try {
     const client = await pool.connect();
-    await client.query('SET search_path TO ataraxia, public');
+    const schema = process.env.DATABASE_SCHEMA || 'ataraxia';
+    await client.query(`SET search_path TO ${schema}, public`);
     await client.query('SELECT 1');
     client.release();
     return true;
@@ -58,3 +61,4 @@ export async function testConnection(): Promise<boolean> {
 export async function closePool(): Promise<void> {
   await pool.end();
 }
+

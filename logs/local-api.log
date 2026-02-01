@@ -1,4 +1,4 @@
-[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
 ✅ PostgreSQL database connection successful
 ✅ AWS Cognito configuration loaded
    User Pool: us-west-2_xeXlyFBMH
@@ -51,560 +51,81 @@
 
 ======================================================================
 
-[2026-01-26T17:51:54.082Z] GET /health
-[2026-01-26T17:51:54.120Z] GET /health
-[2026-01-26T17:51:54.157Z] GET /api/auth/me
-[2026-01-26T17:51:54.166Z] GET /api/therapist
-📊 Found 3 therapists (3 total)
-[2026-01-26T17:51:54.282Z] GET /api/client
-📊 Found 0 clients (0 total)
-[2026-01-26T17:51:54.401Z] POST /api/auth/login
+[2026-02-01T01:55:12.161Z] POST /api/auth/login
   Body: {
   "email": "test@example.com",
-  "password": "test123"
-}
-🔐 REAL Cognito login attempt: { email: 'test@example.com', password: '***' }
-❌ Login error: NotAuthorizedException: Incorrect username or password.
-    at AwsJson1_1Protocol.handleError (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:813:27)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    at async AwsJson1_1Protocol.deserializeResponse (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:481:13)
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:26:24
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/index.js:121:20
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/middleware-retry/dist-cjs/index.js:254:46
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@aws-sdk/middleware-logger/dist-cjs/index.js:5:26
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/local-api-server.js:137:29 {
-  '$fault': 'client',
-  '$retryable': undefined,
-  '$metadata': {
-    httpStatusCode: 400,
-    requestId: 'a58b347a-4f9a-43a2-89b7-2bf80c27bdee',
-    extendedRequestId: undefined,
-    cfId: undefined,
-    attempts: 1,
-    totalRetryDelay: 0
-  },
-  __type: 'NotAuthorizedException'
-}
-[2026-01-26T17:52:03.987Z] GET /health
-[2026-01-26T17:52:13.450Z] GET /api-explorer
-[2026-01-26T17:52:20.887Z] GET /health
-[2026-01-26T17:53:08.544Z] GET /api-explorer
-[2026-01-26T17:53:08.568Z] GET /health
-[2026-01-26T17:53:08.619Z] GET /favicon.ico
-[2026-01-26T21:56:11.704Z] GET /api-explorer
-[2026-01-26T21:56:15.778Z] GET /api-explorer
-[2026-01-26T21:56:36.195Z] GET /api-explorer
-[2026-01-26T22:45:12.286Z] GET /health
-[2026-01-27T00:58:06.652Z] GET /api-explorer
-[2026-01-31T03:41:58.137Z] GET /health
-[2026-01-31T03:42:37.068Z] POST /api/auth/login
-  Body: {
-  "email": "test@example.com",
-  "password": "test"
-}
-🔐 REAL Cognito login attempt: { email: 'test@example.com', password: '***' }
-❌ Login error: NotAuthorizedException: Incorrect username or password.
-    at AwsJson1_1Protocol.handleError (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:813:27)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    at async AwsJson1_1Protocol.deserializeResponse (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:481:13)
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:26:24
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/index.js:121:20
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/middleware-retry/dist-cjs/index.js:254:46
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@aws-sdk/middleware-logger/dist-cjs/index.js:5:26
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/local-api-server.js:137:29 {
-  '$fault': 'client',
-  '$retryable': undefined,
-  '$metadata': {
-    httpStatusCode: 400,
-    requestId: 'cca64f8e-c946-4413-9974-89fa58c0ce61',
-    extendedRequestId: undefined,
-    cfId: undefined,
-    attempts: 1,
-    totalRetryDelay: 0
-  },
-  __type: 'NotAuthorizedException'
-}
-[2026-01-31T03:43:42.526Z] GET /health
-[2026-01-31T03:43:42.614Z] POST /api/auth/register
-  Body: {
-  "email": "test-1769831022611@ataraxia.com",
-  "password": "SecurePassword123!@#",
-  "firstName": "Test",
-  "lastName": "User",
-  "phoneNumber": "5551234567",
-  "role": "therapist"
-}
-📝 REAL Cognito registration: {
-  email: 'test-1769831022611@ataraxia.com',
-  firstName: 'Test',
-  lastName: 'User',
-  role: 'therapist',
-  phoneNumber: '5551234567',
-  countryCode: undefined
-}
-📱 Auto-formatted phone number (assuming +91): +915551234567
-✅ Cognito user created: b84183f0-1091-7061-712b-23aa730a5b04
-✅ User created in database: 1000038n
-[2026-01-31T03:43:43.739Z] POST /api/auth/login
-  Body: {
-  "email": "vignesh@ataraxia.com",
-  "password": "Test@1234"
-}
-🔐 REAL Cognito login attempt: { email: 'vignesh@ataraxia.com', password: '***' }
-❌ Login error: NotAuthorizedException: Incorrect username or password.
-    at AwsJson1_1Protocol.handleError (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:813:27)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    at async AwsJson1_1Protocol.deserializeResponse (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:481:13)
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:26:24
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/index.js:121:20
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/middleware-retry/dist-cjs/index.js:254:46
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@aws-sdk/middleware-logger/dist-cjs/index.js:5:26
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/local-api-server.js:137:29 {
-  '$fault': 'client',
-  '$retryable': undefined,
-  '$metadata': {
-    httpStatusCode: 400,
-    requestId: '100a7b16-6ce5-477c-a346-df4fd72fb9be',
-    extendedRequestId: undefined,
-    cfId: undefined,
-    attempts: 1,
-    totalRetryDelay: 0
-  },
-  __type: 'NotAuthorizedException'
-}
-[2026-01-31T03:43:44.481Z] GET /api/therapist
-📊 Found 5 therapists (13 total)
-[2026-01-31T03:43:44.671Z] GET /api/therapist/search
-[2026-01-31T03:43:44.788Z] GET /api/client
-📊 Found 3 clients (3 total)
-[2026-01-31T03:43:44.905Z] GET /api/appointment
-[2026-01-31T03:43:44.908Z] GET /auth/therapist/status/test-auth-id-1769831024906
-[2026-01-31T03:45:16.825Z] GET /health
-[2026-01-31T03:45:16.891Z] POST /api/auth/register
-  Body: {
-  "email": "test-1769831116889@ataraxia.com",
-  "password": "SecurePassword123!@#",
-  "firstName": "Test",
-  "lastName": "User",
-  "phoneNumber": "5551234567",
-  "role": "therapist"
-}
-📝 REAL Cognito registration: {
-  email: 'test-1769831116889@ataraxia.com',
-  firstName: 'Test',
-  lastName: 'User',
-  role: 'therapist',
-  phoneNumber: '5551234567',
-  countryCode: undefined
-}
-📱 Auto-formatted phone number (assuming +91): +915551234567
-✅ Cognito user created: 28718350-0011-7070-1050-21bb1a4afe66
-✅ User created in database: 1000039n
-[2026-01-31T03:45:17.796Z] POST /api/auth/login
-  Body: {
-  "email": "vignesh@ataraxia.com",
-  "password": "Test@1234"
-}
-🔐 REAL Cognito login attempt: { email: 'vignesh@ataraxia.com', password: '***' }
-❌ Login error: NotAuthorizedException: Incorrect username or password.
-    at AwsJson1_1Protocol.handleError (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:813:27)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    at async AwsJson1_1Protocol.deserializeResponse (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:481:13)
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:26:24
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/index.js:121:20
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/middleware-retry/dist-cjs/index.js:254:46
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@aws-sdk/middleware-logger/dist-cjs/index.js:5:26
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/local-api-server.js:137:29 {
-  '$fault': 'client',
-  '$retryable': undefined,
-  '$metadata': {
-    httpStatusCode: 400,
-    requestId: '1adb2ba2-8316-46b5-8a05-a19792f88816',
-    extendedRequestId: undefined,
-    cfId: undefined,
-    attempts: 1,
-    totalRetryDelay: 0
-  },
-  __type: 'NotAuthorizedException'
-}
-[2026-01-31T03:45:18.246Z] GET /api/therapist
-📊 Found 5 therapists (13 total)
-[2026-01-31T03:45:18.326Z] GET /api/therapist/search
-[2026-01-31T03:45:18.371Z] GET /api/client
-📊 Found 3 clients (3 total)
-[2026-01-31T03:45:18.422Z] GET /api/appointment
-[2026-01-31T03:45:18.424Z] GET /auth/therapist/status/test-auth-id-1769831118423
-[2026-01-31T03:45:31.330Z] GET /api/appointment
-[dotenv@17.2.3] injecting env (0) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
-✅ PostgreSQL database connection successful
-✅ AWS Cognito configuration loaded
-   User Pool: us-west-2_xeXlyFBMH
-   Client ID: 7ek8kg1td2ps985r21m7727q98
-   Region: us-west-2
-
-======================================================================
-  🚀 Ataraxia REAL API Server (Cognito + PostgreSQL)
-======================================================================
-
-  Server running on: http://localhost:3010
-  Environment: REAL Production-Ready
-  Database: PostgreSQL (Connected)
-  Authentication: AWS Cognito (us-west-2_xeXlyFBMH)
-
-  🔐 REAL Auth Endpoints:
-    POST   /api/auth/login             - Real Cognito Login
-    POST   /api/auth/register          - Real Cognito Registration
-    GET    /api/auth/me               - Real User Profile
-    POST   /api/auth/logout           - Logout
-    POST   /api/auth/forgot-password  - Real Password Reset
-    POST   /api/auth/phone/send-code  - SMS Verification
-    POST   /api/auth/phone/verify-code - SMS Code Verification
-    POST   /api/auth/google           - Google OAuth
-    POST   /api/auth/therapist/register - Complete Therapist Registration
-
-  👨‍⚕️ MODERN Therapist Service (PostgreSQL + Cognito):
-    GET    /api/therapist             - Get All Therapists (with filters)
-    GET    /api/therapist/:id         - Get Therapist Details
-    PUT    /api/therapist/:id         - Update Therapist Profile
-    GET    /api/therapist/:id/availability - Get Availability
-    PUT    /api/therapist/:id/availability - Update Availability
-
-  👤 MODERN Client Service (PostgreSQL + Cognito):
-    GET    /api/client                - Get All Clients (with filters)
-    GET    /api/client/:id            - Get Client Details
-    PUT    /api/client/:id            - Update Client Profile
-    POST   /api/client/:id/assign     - Assign Therapist to Client
-
-  🏥 System Endpoints:
-    GET    /health                    - Health check
-
-======================================================================
-
-  💡 Frontend Configuration:
-     Update your frontend .env.local:
-     VITE_API_BASE_URL=http://localhost:3010
-
-  🎉 NO MORE MOCK DATA - This is the REAL system!
-
-======================================================================
-
-[2026-01-31T21:55:06.820Z] GET /health
-[2026-01-31T21:55:06.854Z] GET /health
-[2026-01-31T21:55:06.887Z] GET /api/auth/me
-[2026-01-31T21:55:06.895Z] GET /api/therapist
-📊 Found 13 therapists (13 total)
-[2026-01-31T21:55:07.003Z] GET /api/client
-📊 Found 3 clients (3 total)
-[2026-01-31T21:55:07.121Z] POST /api/auth/login
-  Body: {
-  "email": "test@example.com",
-  "password": "test123"
+  "password": "pwd"
 }
 🔐 Login attempt via AuthProvider: { email: 'test@example.com', password: '***' }
-❌ Login error: NotAuthorizedException: Incorrect username or password.
-    at AwsJson1_1Protocol.handleError (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:813:27)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    at async AwsJson1_1Protocol.deserializeResponse (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:481:13)
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:26:24
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/index.js:121:20
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/middleware-retry/dist-cjs/index.js:254:46
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@aws-sdk/middleware-logger/dist-cjs/index.js:5:26
-    at async CognitoProvider.signIn (/Users/cvp/anti-gravity/Ataraxia-Next/dist/lib/auth/providers/CognitoProvider.js:48:26)
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/local-api-server.js:228:26 {
-  '$fault': 'client',
-  '$retryable': undefined,
-  '$metadata': {
-    httpStatusCode: 400,
-    requestId: '6d7d258b-42a9-4180-8cde-91b415e33bc6',
-    extendedRequestId: undefined,
-    cfId: undefined,
-    attempts: 1,
-    totalRetryDelay: 0
-  },
-  __type: 'NotAuthorizedException'
-}
-[2026-01-31T21:55:16.008Z] GET /api/config/status
-[2026-01-31T21:55:24.215Z] GET /api/config/auth
-Auth config error: ReferenceError: configurationSources is not defined
-    at /Users/cvp/anti-gravity/Ataraxia-Next/local-api-server.js:194:7
-[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
-✅ PostgreSQL database connection successful
-✅ AWS Cognito configuration loaded
-   User Pool: us-west-2_xeXlyFBMH
-   Client ID: 7ek8kg1td2ps985r21m7727q98
-   Region: us-west-2
-
-======================================================================
-  🚀 Ataraxia REAL API Server (Cognito + PostgreSQL)
-======================================================================
-
-  Server running on: http://localhost:3010
-  Environment: REAL Production-Ready
-  Database: PostgreSQL (Connected)
-  Authentication: AWS Cognito (us-west-2_xeXlyFBMH)
-
-  🔐 REAL Auth Endpoints:
-    POST   /api/auth/login             - Real Cognito Login
-    POST   /api/auth/register          - Real Cognito Registration
-    GET    /api/auth/me               - Real User Profile
-    POST   /api/auth/logout           - Logout
-    POST   /api/auth/forgot-password  - Real Password Reset
-    POST   /api/auth/phone/send-code  - SMS Verification
-    POST   /api/auth/phone/verify-code - SMS Code Verification
-    POST   /api/auth/google           - Google OAuth
-    POST   /api/auth/therapist/register - Complete Therapist Registration
-
-  👨‍⚕️ MODERN Therapist Service (PostgreSQL + Cognito):
-    GET    /api/therapist             - Get All Therapists (with filters)
-    GET    /api/therapist/:id         - Get Therapist Details
-    PUT    /api/therapist/:id         - Update Therapist Profile
-    GET    /api/therapist/:id/availability - Get Availability
-    PUT    /api/therapist/:id/availability - Update Availability
-
-  👤 MODERN Client Service (PostgreSQL + Cognito):
-    GET    /api/client                - Get All Clients (with filters)
-    GET    /api/client/:id            - Get Client Details
-    PUT    /api/client/:id            - Update Client Profile
-    POST   /api/client/:id/assign     - Assign Therapist to Client
-
-  🏥 System Endpoints:
-    GET    /health                    - Health check
-
-======================================================================
-
-  💡 Frontend Configuration:
-     Update your frontend .env.local:
-     VITE_API_BASE_URL=http://localhost:3010
-
-  🎉 NO MORE MOCK DATA - This is the REAL system!
-
-======================================================================
-
-[2026-01-31T21:55:46.890Z] GET /health
-[2026-01-31T21:55:46.929Z] GET /health
-[2026-01-31T21:55:46.965Z] GET /api/auth/me
-[2026-01-31T21:55:46.977Z] GET /api/therapist
+🔄 Fetching Auth Config from Database/Env...
+🔄 Initializing Auth Provider: firebase
+🔥 Initializing Firebase Provider
+❌ Login error: Error: Firebase Server-Side Login not supported directly in Admin SDK. Use Client SDK to get ID Token, then use verifyToken on backend.
+    at FirebaseProvider.signIn (/Users/cvp/anti-gravity/Ataraxia-Next/dist/lib/auth/providers/FirebaseProvider.js:41:15)
+    at /Users/cvp/anti-gravity/Ataraxia-Next/local-api-server.js:464:41
+{"timestamp":"2026-02-01T01:55:14.038Z","level":"INFO","service":"config-manager","message":"Default configurations initialized"}
+[2026-02-01T02:05:18.690Z] GET /health
+[2026-02-01T03:39:40.536Z] GET /api/therapist
 📊 Found 13 therapists (13 total)
-[2026-01-31T21:55:47.092Z] GET /api/client
-📊 Found 3 clients (3 total)
-[2026-01-31T21:55:47.220Z] POST /api/auth/login
-  Body: {
-  "email": "test@example.com",
-  "password": "test123"
-}
-🔐 Login attempt via AuthProvider: { email: 'test@example.com', password: '***' }
-❌ Login error: NotAuthorizedException: Incorrect username or password.
-    at AwsJson1_1Protocol.handleError (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:813:27)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    at async AwsJson1_1Protocol.deserializeResponse (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:481:13)
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:26:24
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/index.js:121:20
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/middleware-retry/dist-cjs/index.js:254:46
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@aws-sdk/middleware-logger/dist-cjs/index.js:5:26
-    at async CognitoProvider.signIn (/Users/cvp/anti-gravity/Ataraxia-Next/dist/lib/auth/providers/CognitoProvider.js:48:26)
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/local-api-server.js:228:26 {
-  '$fault': 'client',
-  '$retryable': undefined,
-  '$metadata': {
-    httpStatusCode: 400,
-    requestId: 'f28b8e42-675b-428b-8bd5-96017cf0ed59',
-    extendedRequestId: undefined,
-    cfId: undefined,
-    attempts: 1,
-    totalRetryDelay: 0
-  },
-  __type: 'NotAuthorizedException'
-}
-[2026-01-31T21:55:54.463Z] GET /api/config/auth
-[2026-01-31T21:56:35.713Z] GET /api-explorer
-[2026-01-31T21:56:42.820Z] GET /api/config/status
-[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
-✅ PostgreSQL database connection successful
-✅ AWS Cognito configuration loaded
-   User Pool: us-west-2_xeXlyFBMH
-   Client ID: 7ek8kg1td2ps985r21m7727q98
-   Region: us-west-2
-
-======================================================================
-  🚀 Ataraxia REAL API Server (Cognito + PostgreSQL)
-======================================================================
-
-  Server running on: http://localhost:3010
-  Environment: REAL Production-Ready
-  Database: PostgreSQL (Connected)
-  Authentication: AWS Cognito (us-west-2_xeXlyFBMH)
-
-  🔐 REAL Auth Endpoints:
-    POST   /api/auth/login             - Real Cognito Login
-    POST   /api/auth/register          - Real Cognito Registration
-    GET    /api/auth/me               - Real User Profile
-    POST   /api/auth/logout           - Logout
-    POST   /api/auth/forgot-password  - Real Password Reset
-    POST   /api/auth/phone/send-code  - SMS Verification
-    POST   /api/auth/phone/verify-code - SMS Code Verification
-    POST   /api/auth/google           - Google OAuth
-    POST   /api/auth/therapist/register - Complete Therapist Registration
-
-  👨‍⚕️ MODERN Therapist Service (PostgreSQL + Cognito):
-    GET    /api/therapist             - Get All Therapists (with filters)
-    GET    /api/therapist/:id         - Get Therapist Details
-    PUT    /api/therapist/:id         - Update Therapist Profile
-    GET    /api/therapist/:id/availability - Get Availability
-    PUT    /api/therapist/:id/availability - Update Availability
-
-  👤 MODERN Client Service (PostgreSQL + Cognito):
-    GET    /api/client                - Get All Clients (with filters)
-    GET    /api/client/:id            - Get Client Details
-    PUT    /api/client/:id            - Update Client Profile
-    POST   /api/client/:id/assign     - Assign Therapist to Client
-
-  🏥 System Endpoints:
-    GET    /health                    - Health check
-
-======================================================================
-
-  💡 Frontend Configuration:
-     Update your frontend .env.local:
-     VITE_API_BASE_URL=http://localhost:3010
-
-  🎉 NO MORE MOCK DATA - This is the REAL system!
-
-======================================================================
-
-[2026-01-31T22:00:16.731Z] GET /health
-[2026-01-31T22:00:16.828Z] GET /health
-[2026-01-31T22:00:16.873Z] GET /api/auth/me
-[2026-01-31T22:00:16.885Z] GET /api/therapist
+[2026-02-01T03:39:40.873Z] GET /api/therapist/search
+[2026-02-01T03:39:40.921Z] POST /api/auth/login
+❌ Login error: TypeError: Cannot destructure property 'email' of 'req.body' as it is undefined.
+    at /Users/cvp/anti-gravity/Ataraxia-Next/local-api-server.js:452:13
+    at Layer.handleRequest (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/lib/layer.js:152:17)
+    at next (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/lib/route.js:157:13)
+    at Route.dispatch (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/lib/route.js:117:3)
+    at handle (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/index.js:435:11)
+    at Layer.handleRequest (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/lib/layer.js:152:17)
+    at /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/index.js:295:15
+    at processParams (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/index.js:582:12)
+    at next (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/index.js:291:5)
+    at /Users/cvp/anti-gravity/Ataraxia-Next/local-api-server.js:73:3
+[2026-02-01T03:39:40.925Z] POST /api/auth/register
+❌ Registration error: TypeError: Cannot destructure property 'email' of 'req.body' as it is undefined.
+    at /Users/cvp/anti-gravity/Ataraxia-Next/local-api-server.js:541:13
+    at Layer.handleRequest (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/lib/layer.js:152:17)
+    at next (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/lib/route.js:157:13)
+    at Route.dispatch (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/lib/route.js:117:3)
+    at handle (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/index.js:435:11)
+    at Layer.handleRequest (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/lib/layer.js:152:17)
+    at /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/index.js:295:15
+    at processParams (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/index.js:582:12)
+    at next (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/index.js:291:5)
+    at /Users/cvp/anti-gravity/Ataraxia-Next/local-api-server.js:73:3
+[2026-02-01T03:39:40.929Z] GET /api/verification/status/test
+[2026-02-01T03:39:40.956Z] GET /api/therapist
 📊 Found 13 therapists (13 total)
-[2026-01-31T22:00:16.987Z] GET /api/client
-📊 Found 3 clients (3 total)
-[2026-01-31T22:00:17.098Z] POST /api/auth/login
-  Body: {
-  "email": "test@example.com",
-  "password": "test123"
-}
-🔐 Login attempt via AuthProvider: { email: 'test@example.com', password: '***' }
-❌ Login error: NotAuthorizedException: Incorrect username or password.
-    at AwsJson1_1Protocol.handleError (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:813:27)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    at async AwsJson1_1Protocol.deserializeResponse (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:481:13)
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:26:24
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/index.js:121:20
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/middleware-retry/dist-cjs/index.js:254:46
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@aws-sdk/middleware-logger/dist-cjs/index.js:5:26
-    at async CognitoProvider.signIn (/Users/cvp/anti-gravity/Ataraxia-Next/dist/lib/auth/providers/CognitoProvider.js:48:26)
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/local-api-server.js:497:26 {
-  '$fault': 'client',
-  '$retryable': undefined,
-  '$metadata': {
-    httpStatusCode: 400,
-    requestId: '9ed7fa92-1100-4a8a-b9fb-e0a968c27e45',
-    extendedRequestId: undefined,
-    cfId: undefined,
-    attempts: 1,
-    totalRetryDelay: 0
-  },
-  __type: 'NotAuthorizedException'
-}
-[2026-01-31T22:00:25.946Z] GET /api/config/status
-[2026-01-31T22:00:40.299Z] GET /api/config/infrastructure
-[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
-✅ PostgreSQL database connection successful
-✅ AWS Cognito configuration loaded
-   User Pool: us-west-2_xeXlyFBMH
-   Client ID: 7ek8kg1td2ps985r21m7727q98
-   Region: us-west-2
-
-======================================================================
-  🚀 Ataraxia REAL API Server (Cognito + PostgreSQL)
-======================================================================
-
-  Server running on: http://localhost:3010
-  Environment: REAL Production-Ready
-  Database: PostgreSQL (Connected)
-  Authentication: AWS Cognito (us-west-2_xeXlyFBMH)
-
-  🔐 REAL Auth Endpoints:
-    POST   /api/auth/login             - Real Cognito Login
-    POST   /api/auth/register          - Real Cognito Registration
-    GET    /api/auth/me               - Real User Profile
-    POST   /api/auth/logout           - Logout
-    POST   /api/auth/forgot-password  - Real Password Reset
-    POST   /api/auth/phone/send-code  - SMS Verification
-    POST   /api/auth/phone/verify-code - SMS Code Verification
-    POST   /api/auth/google           - Google OAuth
-    POST   /api/auth/therapist/register - Complete Therapist Registration
-
-  👨‍⚕️ MODERN Therapist Service (PostgreSQL + Cognito):
-    GET    /api/therapist             - Get All Therapists (with filters)
-    GET    /api/therapist/:id         - Get Therapist Details
-    PUT    /api/therapist/:id         - Update Therapist Profile
-    GET    /api/therapist/:id/availability - Get Availability
-    PUT    /api/therapist/:id/availability - Update Availability
-
-  👤 MODERN Client Service (PostgreSQL + Cognito):
-    GET    /api/client                - Get All Clients (with filters)
-    GET    /api/client/:id            - Get Client Details
-    PUT    /api/client/:id            - Update Client Profile
-    POST   /api/client/:id/assign     - Assign Therapist to Client
-
-  🏥 System Endpoints:
-    GET    /health                    - Health check
-
-======================================================================
-
-  💡 Frontend Configuration:
-     Update your frontend .env.local:
-     VITE_API_BASE_URL=http://localhost:3010
-
-  🎉 NO MORE MOCK DATA - This is the REAL system!
-
-======================================================================
-
-[2026-01-31T22:02:58.704Z] GET /health
-[2026-01-31T22:02:58.739Z] GET /health
-[2026-01-31T22:02:58.772Z] GET /api/auth/me
-[2026-01-31T22:02:58.783Z] GET /api/therapist
+[2026-02-01T03:39:41.011Z] GET /api/therapist/search
+[2026-02-01T03:39:41.044Z] GET /api/auth/login
+[2026-02-01T03:46:03.403Z] GET /api/therapist
 📊 Found 13 therapists (13 total)
-[2026-01-31T22:02:58.887Z] GET /api/client
-📊 Found 3 clients (3 total)
-[2026-01-31T22:02:58.985Z] POST /api/auth/login
-  Body: {
-  "email": "test@example.com",
-  "password": "test123"
-}
-🔐 Login attempt via AuthProvider: { email: 'test@example.com', password: '***' }
-❌ Login error: NotAuthorizedException: Incorrect username or password.
-    at AwsJson1_1Protocol.handleError (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:813:27)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    at async AwsJson1_1Protocol.deserializeResponse (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:481:13)
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:26:24
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/core/dist-cjs/index.js:121:20
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@smithy/middleware-retry/dist-cjs/index.js:254:46
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/@aws-sdk/middleware-logger/dist-cjs/index.js:5:26
-    at async CognitoProvider.signIn (/Users/cvp/anti-gravity/Ataraxia-Next/dist/lib/auth/providers/CognitoProvider.js:48:26)
-    at async /Users/cvp/anti-gravity/Ataraxia-Next/local-api-server.js:680:26 {
-  '$fault': 'client',
-  '$retryable': undefined,
-  '$metadata': {
-    httpStatusCode: 400,
-    requestId: 'c592d36e-e81b-4eed-bb84-ed5459f9cdde',
-    extendedRequestId: undefined,
-    cfId: undefined,
-    attempts: 1,
-    totalRetryDelay: 0
-  },
-  __type: 'NotAuthorizedException'
-}
-[2026-01-31T22:03:15.670Z] GET /api/config/status
-[2026-01-31T22:06:13.052Z] GET /api/config/credentials
-[2026-01-31T22:06:17.422Z] GET /api-explorer
-[2026-01-31T22:06:21.763Z] GET /api/config/status
-[2026-01-31T22:06:26.548Z] GET /api/config/infrastructure
-[2026-01-31T22:06:30.914Z] GET /api/config/credentials
-[2026-01-31T22:06:38.300Z] GET /api-explorer
-[2026-01-31T22:06:57.933Z] GET /api-explorer
-[2026-01-31T22:06:59.582Z] GET /api-explorer
-[2026-01-31T22:07:11.783Z] GET /api-explorer
-[2026-01-31T22:07:17.117Z] GET /api/config/status
-[2026-01-31T22:07:31.318Z] GET /api/config/auth
+[2026-02-01T03:46:03.674Z] GET /api/therapist/search
+[2026-02-01T03:46:03.719Z] POST /api/auth/login
+❌ Login error: TypeError: Cannot destructure property 'email' of 'req.body' as it is undefined.
+    at /Users/cvp/anti-gravity/Ataraxia-Next/local-api-server.js:452:13
+    at Layer.handleRequest (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/lib/layer.js:152:17)
+    at next (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/lib/route.js:157:13)
+    at Route.dispatch (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/lib/route.js:117:3)
+    at handle (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/index.js:435:11)
+    at Layer.handleRequest (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/lib/layer.js:152:17)
+    at /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/index.js:295:15
+    at processParams (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/index.js:582:12)
+    at next (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/index.js:291:5)
+    at /Users/cvp/anti-gravity/Ataraxia-Next/local-api-server.js:73:3
+[2026-02-01T03:46:03.722Z] POST /api/auth/register
+❌ Registration error: TypeError: Cannot destructure property 'email' of 'req.body' as it is undefined.
+    at /Users/cvp/anti-gravity/Ataraxia-Next/local-api-server.js:541:13
+    at Layer.handleRequest (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/lib/layer.js:152:17)
+    at next (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/lib/route.js:157:13)
+    at Route.dispatch (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/lib/route.js:117:3)
+    at handle (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/index.js:435:11)
+    at Layer.handleRequest (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/lib/layer.js:152:17)
+    at /Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/index.js:295:15
+    at processParams (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/index.js:582:12)
+    at next (/Users/cvp/anti-gravity/Ataraxia-Next/node_modules/router/index.js:291:5)
+    at /Users/cvp/anti-gravity/Ataraxia-Next/local-api-server.js:73:3
+[2026-02-01T03:46:03.725Z] GET /api/verification/status/test
+[2026-02-01T03:46:03.749Z] GET /api/therapist
+📊 Found 13 therapists (13 total)
+[2026-02-01T03:46:03.794Z] GET /api/therapist/search
+[2026-02-01T03:46:03.818Z] GET /api/auth/login

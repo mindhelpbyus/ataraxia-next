@@ -19,12 +19,15 @@ const account = app.node.tryGetContext('account') || process.env.CDK_DEFAULT_ACC
 const region = app.node.tryGetContext('region') || process.env.CDK_DEFAULT_REGION || process.env.AWS_REGION || 'us-west-2';
 
 // Environment-specific configuration
+const contextDatabaseUrl = app.node.tryGetContext('databaseUrl');
+
+// Environment-specific configuration
 const envConfig = {
   local: {
-    databaseUrl: 'postgresql://ataraxia_user:ataraxia_password@localhost:5432/ataraxia_db'
+    databaseUrl: contextDatabaseUrl || 'postgresql://ataraxia_user:ataraxia_password@localhost:5432/ataraxia_db'
   },
   dev: {
-    databaseUrl: process.env.DATABASE_URL || 'postgresql://app_user:ChangeMe123!@dev-db-cluster.cluster-cliy2m6q8h4h.us-west-2.rds.amazonaws.com:5432/ataraxia_db'
+    databaseUrl: contextDatabaseUrl || process.env.DATABASE_URL || 'postgresql://app_user:ChangeMe123!@dev-db-cluster.cluster-cliy2m6q8h4h.us-west-2.rds.amazonaws.com:5432/ataraxia_db?schema=ataraxia'
   },
   staging: {
     databaseUrl: process.env.STAGING_DATABASE_URL || 'postgresql://placeholder'

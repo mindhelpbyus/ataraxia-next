@@ -20,7 +20,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Logging configuration
-LOG_DIR="./deployment-logs"
+LOG_DIR="$(pwd)/deployment-logs"
 LOG_FILE="${LOG_DIR}/deployment-$(date +%Y%m%d-%H%M%S).log"
 DEPLOYMENT_ID="deploy-$(date +%Y%m%d-%H%M%S)"
 
@@ -338,7 +338,7 @@ validate_deployment() {
     # Extract and validate outputs
     print_status "Extracting deployment outputs..."
     
-    local stack_name="AtaraxiaStack-${ENVIRONMENT}"
+    local stack_name="ataraxia-healthcare-${ENVIRONMENT}"
     USER_POOL_ID=$(jq -r ".\"${stack_name}\".OutputUserPoolId // empty" cdk-outputs.json)
     CLIENT_ID=$(jq -r ".\"${stack_name}\".OutputUserPoolClientId // empty" cdk-outputs.json)
     API_URL=$(jq -r ".\"${stack_name}\".OutputApiGatewayUrl // empty" cdk-outputs.json)

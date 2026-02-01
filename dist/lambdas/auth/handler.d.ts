@@ -1,8 +1,8 @@
 /**
- * Auth Lambda Handler - Cloud Agnostic + Prisma Implementation
+ * Auth Lambda Handler - Hybrid Support (Firebase + Cognito)
  *
- * Handles authentication using the abstract AuthProvider and Prisma ORM.
- * Replaces legacy SQL with Prisma Client for all database interactions.
+ * Handles authentication supporting both Firebase and Cognito providers simultaneously.
+ * Uses DB lookup to route requests to the correct provider for existing users.
  */
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 export declare const handler: (event: APIGatewayProxyEvent) => Promise<APIGatewayProxyResult>;

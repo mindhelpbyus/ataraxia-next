@@ -1,0 +1,243 @@
+{
+  "summary": {
+    "totalTests": 25,
+    "totalPassed": 11,
+    "totalFailed": 14,
+    "successRate": 44,
+    "timestamp": "2026-02-01T03:39:41.546Z",
+    "environment": "development",
+    "deploymentValid": false
+  },
+  "categories": {
+    "infrastructure": {
+      "passed": 1,
+      "failed": 5,
+      "tests": [
+        {
+          "name": "Lambda Function: ataraxia-auth-development",
+          "passed": false,
+          "message": "Function not found: Function not found: arn:aws:lambda:us-west-2:121775527089:function:ataraxia-auth-development",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:39.446Z"
+        },
+        {
+          "name": "Lambda Function: ataraxia-therapist-development",
+          "passed": false,
+          "message": "Function not found: Function not found: arn:aws:lambda:us-west-2:121775527089:function:ataraxia-therapist-development",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:39.573Z"
+        },
+        {
+          "name": "Lambda Function: ataraxia-client-development",
+          "passed": false,
+          "message": "Function not found: Function not found: arn:aws:lambda:us-west-2:121775527089:function:ataraxia-client-development",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:39.694Z"
+        },
+        {
+          "name": "Lambda Function: ataraxia-verification-development",
+          "passed": false,
+          "message": "Function not found: Function not found: arn:aws:lambda:us-west-2:121775527089:function:ataraxia-verification-development",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:39.825Z"
+        },
+        {
+          "name": "Cognito User Pool",
+          "passed": true,
+          "message": "User pool exists: ataraxia-healthcare-dev",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:40.109Z"
+        },
+        {
+          "name": "API Gateway",
+          "passed": false,
+          "message": "API Gateway not accessible: Invalid URL",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:40.113Z"
+        }
+      ]
+    },
+    "database": {
+      "passed": 2,
+      "failed": 4,
+      "tests": [
+        {
+          "name": "Database Connection",
+          "passed": true,
+          "message": "Successfully connected to database",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:40.374Z"
+        },
+        {
+          "name": "Enhanced Therapist Schema",
+          "passed": false,
+          "message": "Missing columns: clinical_specialties, therapeutic_modalities, session_formats, insurance_panels_accepted, new_clients_capacity, max_caseload_capacity, emergency_same_day_capacity, weekly_schedule, session_durations",
+          "details": {
+            "existingColumns": 0,
+            "expectedColumns": 9
+          },
+          "timestamp": "2026-02-01T03:39:40.403Z"
+        },
+        {
+          "name": "JSONB Indexes",
+          "passed": true,
+          "message": "Found 2 GIN indexes for JSONB fields",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:40.431Z"
+        },
+        {
+          "name": "Table: temp_therapist_registrations",
+          "passed": false,
+          "message": "Table missing",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:40.454Z"
+        },
+        {
+          "name": "Table: verification_workflow_log",
+          "passed": false,
+          "message": "Table missing",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:40.479Z"
+        },
+        {
+          "name": "Table: therapist_verifications",
+          "passed": false,
+          "message": "Table missing",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:40.501Z"
+        }
+      ]
+    },
+    "api": {
+      "passed": 4,
+      "failed": 1,
+      "tests": [
+        {
+          "name": "GET /api/therapist",
+          "passed": true,
+          "message": "Responded with status 200 (expected)",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:40.872Z"
+        },
+        {
+          "name": "GET /api/therapist/search",
+          "passed": false,
+          "message": "Responded with status 404 (unexpected)",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:40.920Z"
+        },
+        {
+          "name": "POST /api/auth/login",
+          "passed": true,
+          "message": "Responded with status 401 (expected)",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:40.923Z"
+        },
+        {
+          "name": "POST /api/auth/register",
+          "passed": true,
+          "message": "Responded with status 400 (expected)",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:40.927Z"
+        },
+        {
+          "name": "GET /api/verification/status/test",
+          "passed": true,
+          "message": "Responded with status 404 (expected)",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:40.931Z"
+        }
+      ]
+    },
+    "features": {
+      "passed": 0,
+      "failed": 1,
+      "tests": [
+        {
+          "name": "Enhanced Features",
+          "passed": false,
+          "message": "Feature validation failed: relation \"therapists\" does not exist",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:40.955Z"
+        }
+      ]
+    },
+    "performance": {
+      "passed": 3,
+      "failed": 1,
+      "tests": [
+        {
+          "name": "Basic Therapist List",
+          "passed": true,
+          "message": "Response time: 54ms (max: 2000ms)",
+          "details": {
+            "responseTime": 54,
+            "maxTime": 2000
+          },
+          "timestamp": "2026-02-01T03:39:41.009Z"
+        },
+        {
+          "name": "Advanced Search",
+          "passed": true,
+          "message": "Response time: 33ms (max: 3000ms)",
+          "details": {
+            "responseTime": 33,
+            "maxTime": 3000
+          },
+          "timestamp": "2026-02-01T03:39:41.042Z"
+        },
+        {
+          "name": "Auth Endpoint",
+          "passed": true,
+          "message": "Response time: 3ms (max: 1000ms)",
+          "details": {
+            "responseTime": 3,
+            "maxTime": 1000
+          },
+          "timestamp": "2026-02-01T03:39:41.045Z"
+        },
+        {
+          "name": "Database Query Performance",
+          "passed": false,
+          "message": "Database performance test failed: relation \"users\" does not exist",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:41.185Z"
+        }
+      ]
+    },
+    "security": {
+      "passed": 1,
+      "failed": 2,
+      "tests": [
+        {
+          "name": "CORS Configuration",
+          "passed": false,
+          "message": "CORS test failed: Invalid URL",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:41.186Z"
+        },
+        {
+          "name": "Authentication Requirement",
+          "passed": false,
+          "message": "Auth test failed: Invalid URL",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:41.186Z"
+        },
+        {
+          "name": "Password Policy",
+          "passed": true,
+          "message": "Strong password policy configured",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:41.545Z"
+        }
+      ]
+    }
+  },
+  "configuration": {
+    "environment": "development",
+    "apiBaseUrl": "http://localhost:3010",
+    "cognitoUserPoolId": "us-west-2_xeXlyFBMH",
+    "cognitoClientId": "7ek8kg1td2ps985r21m7727q98",
+    "region": "us-west-2"
+  }
+}

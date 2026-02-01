@@ -226,6 +226,217 @@ Resources:
             Path: /api/auth/{proxy+}
             Method: OPTIONS
 
+  # RBAC Lambda Function
+  RBACFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Environment}-ataraxia-rbac"
+      CodeUri: dist/lambdas/rbac/
+      Handler: handler.handler
+      Description: RBAC management service
+      Environment:
+        Variables:
+          SERVICE_NAME: rbac-service
+      Events:
+        ListRoles:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/rbac/roles
+            Method: GET
+        ListPermissions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/rbac/permissions
+            Method: GET
+        GetUserRoles:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/rbac/users/{userId}/roles
+            Method: GET
+        AssignRole:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/rbac/users/{userId}/roles
+            Method: POST
+        RevokeRole:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/rbac/users/{userId}/roles
+            Method: DELETE
+        RbacOptions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/rbac/{proxy+}
+            Method: OPTIONS
+        # Legacy Routes Support
+        LegacyRolesAll:
+          Type: Api
+          Properties:
+             RestApiId: !Ref AtaraxiaApi
+             Path: /api/roles-metadata/all
+             Method: GET
+        LegacyRolesProfessional:
+          Type: Api
+          Properties:
+             RestApiId: !Ref AtaraxiaApi
+             Path: /api/roles-metadata/professional
+             Method: GET
+        LegacyRolesValidate:
+          Type: Api
+          Properties:
+             RestApiId: !Ref AtaraxiaApi
+             Path: /api/roles-metadata/validate/{roleName}
+             Method: GET
+        LegacyRolesMe:
+          Type: Api
+          Properties:
+             RestApiId: !Ref AtaraxiaApi
+             Path: /api/roles-metadata/me
+             Method: GET
+        LegacyRolesList:
+          Type: Api
+          Properties:
+             RestApiId: !Ref AtaraxiaApi
+             Path: /api/roles
+             Method: GET
+        LegacyRolesUser:
+          Type: Api
+          Properties:
+             RestApiId: !Ref AtaraxiaApi
+             Path: /api/roles/user/{userId}
+             Method: GET
+        LegacyRolesAssign:
+          Type: Api
+          Properties:
+             RestApiId: !Ref AtaraxiaApi
+             Path: /api/roles/assign
+             Method: POST
+        LegacyRolesRemove:
+          Type: Api
+          Properties:
+             RestApiId: !Ref AtaraxiaApi
+             Path: /api/roles/remove
+             Method: POST
+
+  # Users Lambda Function
+  UsersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Environment}-ataraxia-users"
+      CodeUri: dist/lambdas/users/
+      Handler: handler.handler
+      Description: User management service
+      Environment:
+        Variables:
+          SERVICE_NAME: users-service
+      Events:
+        ListUsers:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/users
+            Method: GET
+        GetUser:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/users/{userId}
+            Method: GET
+        UsersOptions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/users/{proxy+}
+            Method: OPTIONS
+
+  # Therapist Lambda Function
+  TherapistFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Environment}-ataraxia-therapist"
+      CodeUri: dist/lambdas/therapist/
+      Handler: handler.handler
+      Description: Therapist management service
+      Environment:
+        Variables:
+          SERVICE_NAME: therapist-service
+      Events:
+        GetTherapist:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/therapist/{id}
+            Method: GET
+        TherapistSearch:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/therapist/search
+            Method: GET
+        TherapistOptions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/therapist/{proxy+}
+            Method: OPTIONS
+
+  # Client Lambda Function
+  ClientFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Environment}-ataraxia-client"
+      CodeUri: dist/lambdas/client/
+      Handler: handler.handler
+      Description: Client management service
+      Environment:
+        Variables:
+          SERVICE_NAME: client-service
+      Events:
+        GetClient:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/client/{id}
+            Method: GET
+        ClientOptions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/client/{proxy+}
+            Method: OPTIONS
+
+  # Verification Lambda Function
+  VerificationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Environment}-ataraxia-verification"
+      CodeUri: dist/lambdas/verification/
+      Handler: handler.handler
+      Description: Verification service
+      Environment:
+        Variables:
+          SERVICE_NAME: verification-service
+      Events:
+        VerifyStatus:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/verification/status/{id}
+            Method: GET
+        VerificationOptions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/verification/{proxy+}
+            Method: OPTIONS
+
+
 Outputs:
   ApiGatewayEndpoint:
     Description: "API Gateway endpoint URL"

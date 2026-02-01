@@ -39,13 +39,13 @@ cp -r node_modules/xtend dist/node_modules/ 2>/dev/null || true
 # Copy only essential AWS SDK components (for auth service only)
 echo "Copying essential AWS SDK components..."
 # Skip AWS SDK for therapist/client functions to reduce size
-# mkdir -p dist/node_modules/@aws-sdk
-# cp -r node_modules/@aws-sdk/client-cognito-identity-provider dist/node_modules/@aws-sdk/ 2>/dev/null || true
-# cp -r node_modules/@aws-sdk/client-secrets-manager dist/node_modules/@aws-sdk/ 2>/dev/null || true
+mkdir -p dist/node_modules/@aws-sdk
+cp -r node_modules/@aws-sdk/client-cognito-identity-provider dist/node_modules/@aws-sdk/ 2>/dev/null || true
+cp -r node_modules/@aws-sdk/client-secrets-manager dist/node_modules/@aws-sdk/ 2>/dev/null || true
 
 # Copy AWS SDK core dependencies (only if they exist)
-# cp -r node_modules/@aws-sdk/types dist/node_modules/@aws-sdk/ 2>/dev/null || true
-# cp -r node_modules/@smithy dist/node_modules/ 2>/dev/null || true
+cp -r node_modules/@aws-sdk/types dist/node_modules/@aws-sdk/ 2>/dev/null || true
+cp -r node_modules/@smithy dist/node_modules/ 2>/dev/null || true
 
 # Copy Prisma Client (Required for database access)
 echo "Copying Prisma Client..."

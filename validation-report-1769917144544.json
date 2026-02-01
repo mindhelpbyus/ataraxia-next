@@ -1,0 +1,108 @@
+{
+  "summary": {
+    "totalTests": 8,
+    "totalPassed": 0,
+    "totalFailed": 8,
+    "successRate": 0,
+    "timestamp": "2026-02-01T03:39:04.544Z",
+    "environment": "dev",
+    "deploymentValid": false
+  },
+  "categories": {
+    "infrastructure": {
+      "passed": 0,
+      "failed": 4,
+      "tests": [
+        {
+          "name": "Lambda Function: ataraxia-auth-dev",
+          "passed": false,
+          "message": "Function not found: Missing credentials in config, if using AWS_CONFIG_FILE, set AWS_SDK_LOAD_CONFIG=1",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:04.521Z"
+        },
+        {
+          "name": "Lambda Function: ataraxia-therapist-dev",
+          "passed": false,
+          "message": "Function not found: Missing credentials in config, if using AWS_CONFIG_FILE, set AWS_SDK_LOAD_CONFIG=1",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:04.527Z"
+        },
+        {
+          "name": "Lambda Function: ataraxia-client-dev",
+          "passed": false,
+          "message": "Function not found: Missing credentials in config, if using AWS_CONFIG_FILE, set AWS_SDK_LOAD_CONFIG=1",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:04.531Z"
+        },
+        {
+          "name": "Lambda Function: ataraxia-verification-dev",
+          "passed": false,
+          "message": "Function not found: Missing credentials in config, if using AWS_CONFIG_FILE, set AWS_SDK_LOAD_CONFIG=1",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:04.532Z"
+        }
+      ]
+    },
+    "database": {
+      "passed": 0,
+      "failed": 1,
+      "tests": [
+        {
+          "name": "Database Connection",
+          "passed": false,
+          "message": "Database validation failed: ",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:04.542Z"
+        }
+      ]
+    },
+    "api": {
+      "passed": 0,
+      "failed": 1,
+      "tests": [
+        {
+          "name": "API Base URL",
+          "passed": false,
+          "message": "API base URL not configured",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:04.543Z"
+        }
+      ]
+    },
+    "features": {
+      "passed": 0,
+      "failed": 1,
+      "tests": [
+        {
+          "name": "Enhanced Features",
+          "passed": false,
+          "message": "Feature validation failed: ",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:04.544Z"
+        }
+      ]
+    },
+    "performance": {
+      "passed": 0,
+      "failed": 1,
+      "tests": [
+        {
+          "name": "API Performance",
+          "passed": false,
+          "message": "API base URL not configured",
+          "details": null,
+          "timestamp": "2026-02-01T03:39:04.544Z"
+        }
+      ]
+    },
+    "security": {
+      "passed": 0,
+      "failed": 0,
+      "tests": []
+    }
+  },
+  "configuration": {
+    "environment": "dev",
+    "region": "us-west-2"
+  }
+}
