@@ -315,6 +315,11 @@ export class AtaraxiaStack extends cdk.Stack {
         COGNITO_REGION: this.region,
         SECRETS_ARN: secrets.secretArn,
         AUTH_PROVIDER_TYPE: 'cognito',
+        FIREBASE_PROJECT_ID: 'ataraxia-c150f',
+        FIREBASE_API_KEY: 'AIzaSyCM2W8UE5gJekK2vV2d-UE5fVe3ZXzk1vQ',
+        FIREBASE_CLIENT_EMAIL: 'firebase-adminsdk-fbsvc@ataraxia-c150f.iam.gserviceaccount.com',
+        FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY || '',
+        ENABLE_UNIVERSAL_AUTH: 'true',
         DATABASE_URL: databaseUrl,
         DATABASE_SCHEMA: 'ataraxia'
       },

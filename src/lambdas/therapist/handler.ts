@@ -795,7 +795,7 @@ async function handleGetMatchingTherapists(
       therapist_id: t.id.toString(),
       first_name: t.first_name,
       last_name: t.last_name,
-      compatibility_score: 95, // Mock score
+      // Compatibility scoring removed - implement real algorithm
       match_reasons: ['Specialty match', 'Availability exact']
     }));
 

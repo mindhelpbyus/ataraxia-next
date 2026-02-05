@@ -175,8 +175,7 @@ class PrismaAuthService {
           firstName,
           lastName,
           role,
-          phoneNumber,
-          countryCode
+          phoneNumber
         });
       } catch (providerError: any) {
         if (providerError.name === 'UsernameExistsException') {

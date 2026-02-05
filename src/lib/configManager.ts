@@ -1,5 +1,5 @@
 /**
- * Hybrid Configuration Manager
+ * Hybrid Configuration Manager - CLEAN VERSION
  * 
  * Provides seamless configuration management with:
  * ✅ ENV file as primary source
@@ -7,7 +7,6 @@
  * ✅ Runtime configuration updates
  * ✅ Type-safe configuration access
  * ✅ Caching for performance
- * ✅ Hot-reload capabilities
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -20,7 +19,7 @@ export interface ConfigValue {
   value: string | null;
   source: 'env' | 'database' | 'default';
   description?: string;
-  lastUpdated?: Date;
+  lastUpdated: Date;
 }
 
 export interface AuthConfig {
@@ -77,18 +76,18 @@ class ConfigManager {
   }
 
   /**
-   * 🔧 GET CONFIGURATION VALUE
+   * Get configuration value
    * Priority: ENV → Database → Default
    */
   async getConfig(key: string, defaultValue?: string): Promise<ConfigValue> {
     try {
-      // 1. Check cache first
+      // Check cache first
       const cached = this.getCachedConfig(key);
       if (cached) {
         return cached;
       }
 
-      // 2. Check environment variable first
+      // Check environment variable first
       const envValue = process.env[key.toUpperCase()];
       if (envValue !== undefined) {
         const config: ConfigValue = {
@@ -101,13 +100,12 @@ class ConfigManager {
         return config;
       }
 
-      // 3. Fallback to database
-      // @ts-ignore - Prisma client type mismatch workaround
-      const dbConfig = await this.prisma.system_configs?.findUnique({
+      // Check database
+      const dbConfig = await this.prisma.system_configs.findUnique({
         where: { config_key: key }
       });
 
-      if (dbConfig && dbConfig.config_value !== null) {
+      if (dbConfig && dbConfig.config_value) {
         const config: ConfigValue = {
           key,
           value: dbConfig.config_value,
@@ -119,7 +117,7 @@ class ConfigManager {
         return config;
       }
 
-      // 4. Use default value
+      // Use default value
       const config: ConfigValue = {
         key,
         value: defaultValue || null,
@@ -130,8 +128,7 @@ class ConfigManager {
       return config;
 
     } catch (error: any) {
-      // logger.error('Failed to get config', { key, error: error.message });
-      // Suppress error log for missing table if migration not run, return default
+      logger.error('Failed to get config', { key, error: error.message });
       return {
         key,
         value: defaultValue || null,
@@ -142,38 +139,34 @@ class ConfigManager {
   }
 
   /**
-   * 💾 SET CONFIGURATION VALUE
-   * Updates database and cache
+   * Set configuration value in database
    */
   async setConfig(key: string, value: string, description?: string): Promise<void> {
     try {
-      // Update database
-      // @ts-ignore
-      await this.prisma.system_configs?.upsert({
+      await this.prisma.system_configs.upsert({
         where: { config_key: key },
+        create: {
+          config_key: key,
+          config_value: value,
+          description: description || null
+        },
         update: {
           config_value: value,
           description: description || undefined,
           updated_at: new Date()
-        },
-        create: {
-          config_key: key,
-          config_value: value,
-          description: description || undefined
         }
       });
 
       // Update cache
-      const config: ConfigValue = {
+      this.setCachedConfig(key, {
         key,
         value,
         source: 'database',
         description,
         lastUpdated: new Date()
-      };
-      this.setCachedConfig(key, config);
+      });
 
-      logger.info('Configuration updated', { key, source: 'database' });
+      logger.info('Config updated', { key, source: 'database' });
     } catch (error: any) {
       logger.error('Failed to set config', { key, error: error.message });
       throw error;
@@ -181,148 +174,148 @@ class ConfigManager {
   }
 
   /**
-   * 🔐 GET COMPLETE AUTH CONFIGURATION
-   * Returns all auth-related configuration with fallbacks
+   * Get authentication configuration
    */
   async getAuthConfig(): Promise<AuthConfig> {
-    const configs = await Promise.all([
-      // Auth Provider Configuration
-      this.getConfig('auth_provider_type', 'cognito'),
-      this.getConfig('auth_provider_default', 'cognito'),
-      this.getConfig('enable_universal_auth', 'true'),
+    try {
+      const configs = await Promise.all([
+        this.getConfig('AUTH_PROVIDER_TYPE', 'firebase'),
+        this.getConfig('AUTH_PROVIDER_DEFAULT', 'firebase'),
+        this.getConfig('ENABLE_UNIVERSAL_AUTH', 'true'),
+        this.getConfig('COGNITO_USER_POOL_ID', ''),
+        this.getConfig('COGNITO_CLIENT_ID', ''),
+        this.getConfig('COGNITO_REGION', 'us-west-2'),
+        this.getConfig('FIREBASE_PROJECT_ID', ''),
+        this.getConfig('FIREBASE_CLIENT_EMAIL'),
+        this.getConfig('FIREBASE_PRIVATE_KEY'),
+        this.getConfig('FIREBASE_API_KEY'),
+        this.getConfig('EMAIL_VERIFICATION_REQUIRED', 'true'),
+        this.getConfig('PHONE_VERIFICATION_ENABLED', 'true'),
+        this.getConfig('ONBOARDING_STEPS_TOTAL', '10'),
+        this.getConfig('ONBOARDING_AUTO_SAVE', 'true'),
+        this.getConfig('ONBOARDING_BACKUP_INTERVAL', '30000'),
+        this.getConfig('JWT_SECRET', 'default_jwt_secret'),
+        this.getConfig('SESSION_TIMEOUT_MINUTES', '30'),
+        this.getConfig('REFRESH_TOKEN_EXPIRY_DAYS', '7'),
+        this.getConfig('MFA_REQUIRED', 'false'),
+        this.getConfig('PASSWORD_MIN_LENGTH', '12'),
+        this.getConfig('PASSWORD_ROTATION_DAYS', '90'),
+        this.getConfig('API_BASE_URL', ''),
+        this.getConfig('API_TIMEOUT', '30000'),
+        this.getConfig('ENABLE_DETAILED_ERRORS', 'false')
+      ]);
 
-      // Cognito Configuration
-      this.getConfig('cognito_user_pool_id', 'us-west-2_xeXlyFBMH'),
-      this.getConfig('cognito_client_id', '7ek8kg1td2ps985r21m7727q98'),
-      this.getConfig('cognito_region', 'us-west-2'),
-
-      // Firebase Configuration
-      this.getConfig('firebase_project_id', 'ataraxia-health'),
-      this.getConfig('firebase_client_email'),
-      this.getConfig('firebase_private_key'),
-      this.getConfig('firebase_api_key'), // Added
-
-      // Verification Configuration
-      this.getConfig('email_verification_required', 'true'),
-      this.getConfig('phone_verification_enabled', 'true'),
-
-      // Onboarding Configuration
-      this.getConfig('onboarding_steps_total', '10'),
-      this.getConfig('onboarding_auto_save', 'true'),
-      this.getConfig('onboarding_backup_interval', '30000'),
-
-      // Session Configuration
-      this.getConfig('jwt_secret', 'your_jwt_secret_key_change_in_production'),
-      this.getConfig('session_timeout_minutes', '30'),
-      this.getConfig('refresh_token_expiry_days', '7'),
-
-      // Security Configuration
-      this.getConfig('mfa_required', 'false'),
-      this.getConfig('password_min_length', '12'),
-      this.getConfig('password_rotation_days', '90'),
-
-      // API Configuration
-      this.getConfig('api_base_url', 'http://localhost:3010'),
-      this.getConfig('api_timeout', '30000'),
-      this.getConfig('enable_detailed_errors', 'true')
-    ]);
-
-    return {
-      // Auth Provider Configuration
-      authProviderType: configs[0].value || 'cognito',
-      authProviderDefault: configs[1].value || 'cognito',
-      enableUniversalAuth: configs[2].value === 'true',
-
-      // Cognito Configuration
-      cognitoUserPoolId: configs[3].value || 'us-west-2_xeXlyFBMH',
-      cognitoClientId: configs[4].value || '7ek8kg1td2ps985r21m7727q98',
-      cognitoRegion: configs[5].value || 'us-west-2',
-
-      // Firebase Configuration
-      firebaseProjectId: configs[6].value || 'ataraxia-health',
-      firebaseClientEmail: configs[7].value || undefined,
-      firebasePrivateKey: configs[8].value || undefined,
-      firebaseApiKey: configs[9].value || undefined,
-
-      // Verification Configuration
-      emailVerificationRequired: configs[10].value === 'true',
-      phoneVerificationEnabled: configs[11].value === 'true',
-
-      // Onboarding Configuration
-      onboardingStepsTotal: parseInt(configs[12].value || '10'),
-      onboardingAutoSave: configs[13].value === 'true',
-      onboardingBackupInterval: parseInt(configs[14].value || '30000'),
-
-      // Session Configuration
-      jwtSecret: configs[15].value || 'your_jwt_secret_key_change_in_production',
-      sessionTimeoutMinutes: parseInt(configs[16].value || '30'),
-      refreshTokenExpiryDays: parseInt(configs[17].value || '7'),
-
-      // Security Configuration
-      mfaRequired: configs[18].value === 'true',
-      passwordMinLength: parseInt(configs[19].value || '12'),
-      passwordRotationDays: parseInt(configs[20].value || '90'),
-
-      // API Configuration
-      apiBaseUrl: configs[21].value || 'http://localhost:3010',
-      apiTimeout: parseInt(configs[22].value || '30000'),
-      enableDetailedErrors: configs[23].value === 'true'
-    };
-  }
-
-  /**
-   * 🔄 REFRESH CONFIGURATION
-   */
-  async refreshConfig(key?: string): Promise<void> {
-    if (key) {
-      this.configCache.delete(key);
-      this.cacheExpiry.delete(key);
-      await this.getConfig(key);
-    } else {
-      this.configCache.clear();
-      this.cacheExpiry.clear();
+      return {
+        authProviderType: configs[0].value || 'firebase',
+        authProviderDefault: configs[1].value || 'firebase',
+        enableUniversalAuth: configs[2].value === 'true',
+        cognitoUserPoolId: configs[3].value || '',
+        cognitoClientId: configs[4].value || '',
+        cognitoRegion: configs[5].value || 'us-west-2',
+        firebaseProjectId: configs[6].value || '',
+        firebaseClientEmail: configs[7].value || undefined,
+        firebasePrivateKey: configs[8].value || undefined,
+        firebaseApiKey: configs[9].value || undefined,
+        emailVerificationRequired: configs[10].value === 'true',
+        phoneVerificationEnabled: configs[11].value === 'true',
+        onboardingStepsTotal: parseInt(configs[12].value || '10'),
+        onboardingAutoSave: configs[13].value === 'true',
+        onboardingBackupInterval: parseInt(configs[14].value || '30000'),
+        jwtSecret: configs[15].value || 'default_jwt_secret',
+        sessionTimeoutMinutes: parseInt(configs[16].value || '30'),
+        refreshTokenExpiryDays: parseInt(configs[17].value || '7'),
+        mfaRequired: configs[18].value === 'true',
+        passwordMinLength: parseInt(configs[19].value || '12'),
+        passwordRotationDays: parseInt(configs[20].value || '90'),
+        apiBaseUrl: configs[21].value || '',
+        apiTimeout: parseInt(configs[22].value || '30000'),
+        enableDetailedErrors: configs[23].value === 'true'
+      };
+    } catch (error: any) {
+      logger.error('Failed to get auth config', { error: error.message });
+      throw error;
     }
   }
 
   /**
-   * 📊 GET ALL CONFIGURATIONS
+   * Validate configuration
    */
-  async getAllConfigs(): Promise<ConfigValue[]> {
+  async validateConfig(): Promise<{ valid: boolean; errors: string[] }> {
+    const errors: string[] = [];
+    
     try {
-      // @ts-ignore
-      const dbConfigs = await this.prisma.system_configs?.findMany({
-        orderBy: { config_key: 'asc' }
-      }) || [];
-
-      const allConfigs: ConfigValue[] = [];
-
-      for (const dbConfig of dbConfigs) {
-        const envValue = process.env[dbConfig.config_key.toUpperCase()];
-        allConfigs.push({
-          key: dbConfig.config_key,
-          value: envValue || dbConfig.config_value,
-          source: envValue ? 'env' : 'database',
-          description: dbConfig.description || undefined,
-          lastUpdated: dbConfig.updated_at
-        });
+      // Check required environment variables
+      const requiredVars = [
+        'DATABASE_URL',
+        'FIREBASE_PROJECT_ID',
+        'COGNITO_USER_POOL_ID',
+        'COGNITO_CLIENT_ID'
+      ];
+      
+      for (const varName of requiredVars) {
+        if (!process.env[varName]) {
+          errors.push(`Missing required environment variable: ${varName}`);
+        }
       }
+      
+      // Check database connection
+      try {
+        await this.prisma.$queryRaw`SELECT 1`;
+      } catch (error) {
+        errors.push('Database connection failed');
+      }
+      
+      return {
+        valid: errors.length === 0,
+        errors
+      };
+      
+    } catch (error: any) {
+      errors.push(`Configuration validation failed: ${error.message}`);
+      return { valid: false, errors };
+    }
+  }
 
-      const envKeys = Object.keys(process.env);
-      for (const envKey of envKeys) {
-        const dbKey = envKey.toLowerCase();
-        const existsInDb = dbConfigs.some((config: any) => config.config_key === dbKey);
-
-        if (!existsInDb && process.env[envKey]) {
-          allConfigs.push({
-            key: dbKey,
-            value: process.env[envKey]!,
-            source: 'env',
-            lastUpdated: new Date()
+  /**
+   * Get all configurations
+   */
+  async getAllConfigs(): Promise<Array<{ key: string; value: string; source: string }>> {
+    const configs: Array<{ key: string; value: string; source: string }> = [];
+    
+    try {
+      // Get environment variables
+      const envVars = [
+        'DATABASE_URL',
+        'FIREBASE_PROJECT_ID',
+        'COGNITO_USER_POOL_ID',
+        'COGNITO_CLIENT_ID',
+        'AWS_REGION',
+        'AUTH_PROVIDER_TYPE'
+      ];
+      
+      for (const key of envVars) {
+        const value = process.env[key];
+        if (value) {
+          configs.push({
+            key,
+            value: key.includes('SECRET') || key.includes('PASSWORD') ? '***' : value,
+            source: 'env'
           });
         }
       }
-
-      return allConfigs.sort((a, b) => a.key.localeCompare(b.key));
+      
+      // Get database configs
+      const dbConfigs = await this.prisma.system_configs.findMany();
+      for (const config of dbConfigs) {
+        configs.push({
+          key: config.config_key,
+          value: config.config_value || '',
+          source: 'database'
+        });
+      }
+      
+      return configs;
+      
     } catch (error: any) {
       logger.error('Failed to get all configs', { error: error.message });
       return [];
@@ -330,89 +323,56 @@ class ConfigManager {
   }
 
   /**
-   * 🔍 VALIDATE CONFIGURATION
+   * Get cached configuration
    */
-  async validateConfig(): Promise<{ valid: boolean; missing: string[]; warnings: string[] }> {
-    const requiredConfigs = [
-      'auth_provider_type',
-      'cognito_user_pool_id',
-      'cognito_client_id',
-      'jwt_secret',
-      'api_base_url'
-    ];
-
-    const missing: string[] = [];
-    const warnings: string[] = [];
-
-    for (const key of requiredConfigs) {
-      const config = await this.getConfig(key);
-
-      if (!config.value) {
-        missing.push(key);
-      } else if (config.source === 'default') {
-        warnings.push(`${key} is using default value`);
-      }
-    }
-
-    const jwtSecret = await this.getConfig('jwt_secret');
-    if (jwtSecret.value === 'your_jwt_secret_key_change_in_production') {
-      warnings.push('JWT secret is using default insecure value');
-    }
-
-    return {
-      valid: missing.length === 0,
-      missing,
-      warnings
-    };
-  }
-
-  private async initializeDefaultConfigs(): Promise<void> {
-    const defaultConfigs = [
-      { key: 'auth_provider_type', value: 'cognito', description: 'Primary authentication provider' },
-      // ... (Rest of defaults handled dynamically or no-op)
-    ];
-
-    try {
-      // Suppressed detailed logic for brevity, main logic updated
-      logger.info('Default configurations initialized');
-    } catch (error: any) {
-      logger.error('Failed to initialize default configs', { error: error.message });
-    }
-  }
-
   private getCachedConfig(key: string): ConfigValue | null {
-    const cached = this.configCache.get(key);
     const expiry = this.cacheExpiry.get(key);
-    if (cached && expiry && Date.now() < expiry) return cached;
-    this.configCache.delete(key);
-    this.cacheExpiry.delete(key);
-    return null;
+    if (expiry && Date.now() > expiry) {
+      this.configCache.delete(key);
+      this.cacheExpiry.delete(key);
+      return null;
+    }
+    return this.configCache.get(key) || null;
   }
 
+  /**
+   * Set cached configuration
+   */
   private setCachedConfig(key: string, config: ConfigValue): void {
     this.configCache.set(key, config);
     this.cacheExpiry.set(key, Date.now() + this.CACHE_TTL);
   }
 
-  async cleanup(): Promise<void> {
-    this.configCache.clear();
-    this.cacheExpiry.clear();
+  /**
+   * Initialize default configurations
+   */
+  private initializeDefaultConfigs(): void {
+    // This could be expanded to set up default configurations
+    logger.info('Config manager initialized');
   }
 }
 
-// Singleton instance logic
+// Global instance
 let configManagerInstance: ConfigManager | null = null;
+
 export function getConfigManager(prisma: PrismaClient): ConfigManager {
-  if (!configManagerInstance) configManagerInstance = new ConfigManager(prisma);
+  if (!configManagerInstance) {
+    configManagerInstance = new ConfigManager(prisma);
+  }
   return configManagerInstance;
 }
+
+// Convenience functions
 export async function getConfig(prisma: PrismaClient, key: string, defaultValue?: string): Promise<string | null> {
   return (await getConfigManager(prisma).getConfig(key, defaultValue)).value;
 }
+
 export async function setConfig(prisma: PrismaClient, key: string, value: string, description?: string): Promise<void> {
   await getConfigManager(prisma).setConfig(key, value, description);
 }
+
 export async function getAuthConfig(prisma: PrismaClient): Promise<AuthConfig> {
   return await getConfigManager(prisma).getAuthConfig();
 }
+
 export default ConfigManager;

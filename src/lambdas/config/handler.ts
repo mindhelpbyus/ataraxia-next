@@ -110,8 +110,8 @@ async function handleConfigStatus(
       },
       validation: {
         isValid: validation.valid,
-        missingConfigs: validation.missing,
-        warnings: validation.warnings
+        missingConfigs: validation.errors,
+        warnings: []
       },
       keyConfigurations: keyConfigs.map(config => ({
         key: config.key,
@@ -268,11 +268,11 @@ async function handleConfigValidation(
       validation: {
         isValid: validation.valid,
         status: validation.valid ? 'PASS' : 'FAIL',
-        missingConfigurations: validation.missing,
-        warnings: validation.warnings,
+        missingConfigurations: validation.errors,
+        warnings: [],
         checkedAt: new Date().toISOString()
       },
-      recommendations: validation.warnings.length > 0 ? [
+      recommendations: validation.errors.length > 0 ? [
         'Review warning configurations for production readiness',
         'Consider setting secure values for default configurations',
         'Ensure all required configurations are properly set'

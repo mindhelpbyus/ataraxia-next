@@ -15,12 +15,14 @@
     "sourceMap": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "types": ["node", "jest"],
-    "typeRoots": ["./node_modules/@types", "./src/types"],
-    "baseUrl": "./src",
+    "allowSyntheticDefaultImports": true,
+    "moduleResolution": "node",
+    "baseUrl": ".",
     "paths": {
-      "../../shared/*": ["./shared/*"],
-      "../../lib/*": ["./lib/*"]
+      "@/*": ["src/*"],
+      "@/lib/*": ["src/lib/*"],
+      "@/shared/*": ["src/shared/*"],
+      "@/lambdas/*": ["src/lambdas/*"]
     }
   },
   "include": [
@@ -29,6 +31,7 @@
   "exclude": [
     "node_modules",
     "dist",
-    "tests"
+    "**/*.test.ts",
+    "**/*.spec.ts"
   ]
 }

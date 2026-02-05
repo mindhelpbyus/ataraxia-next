@@ -211,7 +211,11 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
             if (!roleName) return errorResponse(400, 'roleName required', requestId);
 
-            await rbacService.assignRole(targetUserId, roleName, user.id, isPrimary || false); // fixed arg order
+            // Get role ID from role name
+            const roleId = await rbacService.getRoleIdByName(roleName);
+            if (!roleId) return errorResponse(404, `Role '${roleName}' not found`, requestId);
+
+            await rbacService.assignRole(targetUserId, roleId, BigInt(user.id), isPrimary || false);
 
             logger.info('Role assigned', { admin: user.id.toString(), target: targetUserId.toString(), role: roleName });
             return successResponse({ success: true }, `Role ${roleName} assigned`, requestId);
@@ -239,7 +243,11 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
             if (!roleName) return errorResponse(400, 'roleName required', requestId);
 
-            await rbacService.revokeRole(targetUserId, roleName, user.id);
+            // Get role ID from role name
+            const roleId = await rbacService.getRoleIdByName(roleName);
+            if (!roleId) return errorResponse(404, `Role '${roleName}' not found`, requestId);
+
+            await rbacService.revokeRole(targetUserId, roleId, BigInt(user.id));
 
             return successResponse({ success: true }, `Role ${roleName} revoked`, requestId);
         }

@@ -6,6 +6,19 @@ echo "Copying essential Lambda dependencies..."
 # Create node_modules directory in dist
 mkdir -p dist/node_modules
 
+# Copy Firebase Admin SDK (Required for Firebase authentication)
+echo "Copying firebase-admin..."
+cp -r node_modules/firebase-admin dist/node_modules/ 2>/dev/null || true
+cp -r node_modules/google-auth-library dist/node_modules/ 2>/dev/null || true
+cp -r node_modules/@google-cloud dist/node_modules/ 2>/dev/null || true
+cp -r node_modules/google-gax dist/node_modules/ 2>/dev/null || true
+cp -r node_modules/google-logging-utils dist/node_modules/ 2>/dev/null || true
+cp -r node_modules/gaxios dist/node_modules/ 2>/dev/null || true
+cp -r node_modules/gcp-metadata dist/node_modules/ 2>/dev/null || true
+cp -r node_modules/gtoken dist/node_modules/ 2>/dev/null || true
+cp -r node_modules/jws dist/node_modules/ 2>/dev/null || true
+cp -r node_modules/lru-cache dist/node_modules/ 2>/dev/null || true
+
 # Copy jsonwebtoken and its direct dependencies only
 echo "Copying jsonwebtoken..."
 cp -r node_modules/jsonwebtoken dist/node_modules/ 2>/dev/null || true
@@ -52,6 +65,10 @@ echo "Copying Prisma Client..."
 mkdir -p dist/node_modules/@prisma
 cp -r node_modules/@prisma/client dist/node_modules/@prisma/ 2>/dev/null || true
 cp -r node_modules/.prisma dist/node_modules/ 2>/dev/null || true
+
+# Copy tslib (Required for TypeScript compilation)
+echo "Copying tslib..."
+cp -r node_modules/tslib dist/node_modules/ 2>/dev/null || true
 
 # Copy Prisma engines/schema if needed explicitly (usually in .prisma)
 # cp -r prisma dist/ 2>/dev/null || true

@@ -72,3 +72,6 @@ env-backup-*/
 ehthumbs.db
 Thumbs.db
 infrastructure/cdk.out
+firebase-service-account.json
+.env.dev
+insert-firebase-config.js

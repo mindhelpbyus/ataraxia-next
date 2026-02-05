@@ -1,0 +1,564 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-1.0.x", "linux-musl"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// MINIMAL AUTHENTICATION-FOCUSED USERS TABLE
+// ============================================================================
+
+model users {
+  // Core Identity & Authentication
+  id                    BigInt   @id @default(autoincrement())
+  email                 String   @unique
+  password_hash         String?  // Only for local auth
+  
+  // Provider Authentication
+  auth_provider_type    String   @default("local") @db.VarChar(50)
+  current_auth_provider String   @default("local") @db.VarChar(50)
+  auth_provider_id      String?  @db.VarChar(255) // Firebase UID, Cognito sub, etc.
+  
+  // Authorization
+  role                  String
+  account_status        String   @default("registered") @db.VarChar(50)
+  is_active             Boolean  @default(true)
+  
+  // Security & MFA
+  mfa_enabled           Boolean  @default(false)
+  email_verified        Boolean  @default(false)
+  phone_verified        Boolean  @default(false)
+  failed_login_attempts Int      @default(0)
+  account_locked_until  DateTime? @db.Timestamptz(6)
+  last_login_at         DateTime? @db.Timestamptz(6)
+  login_count           Int      @default(0)
+  
+  // Minimal Profile (needed for auth display only)
+  first_name            String
+  last_name             String
+  phone_number          String?
+  country_code          String   @default("+1") @db.VarChar(10)
+  
+  // Timestamps
+  created_at            DateTime @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relations to business logic tables
+  therapist_profile     therapist_profiles?
+  therapist_credentials therapist_credentials?
+  therapist_licenses    therapist_licenses?
+  therapist_availability therapist_availability?
+  therapist_insurance   therapist_insurance?
+  therapist_compliance  therapist_compliance?
+  user_address          user_addresses?
+  user_onboarding       user_onboarding?
+  user_marketing        user_marketing?
+  user_organization     user_organization?
+  user_compliance       user_compliance?
+  
+  // Relations to existing tables (maintain compatibility)
+  auth_provider_mapping auth_provider_mapping[]
+  clients               clients?
+  appointments_as_therapist appointments[] @relation("appointments_therapist_idTousers")
+  appointments_as_client    appointments[] @relation("appointments_client_idTousers")
+  clinical_notes_as_therapist clinical_notes[] @relation("clinical_notes_therapist_idTousers")
+  clinical_notes_as_client    clinical_notes[] @relation("clinical_notes_client_idTousers")
+  
+  // Security and compliance relations
+  mfa_secrets           mfa_secrets?
+  mfa_sms_codes         mfa_sms_codes[]
+  email_verification_tokens email_verification_tokens[]
+  password_reset_tokens password_reset_tokens[]
+  refresh_tokens        refresh_tokens[]
+  user_sessions         user_sessions[]
+  compliance_audit_log  compliance_audit_log[]
+  
+  @@index([email])
+  @@index([auth_provider_type, auth_provider_id])
+  @@index([role])
+  @@index([account_status])
+  @@index([created_at])
+}
+
+// ============================================================================
+// BUSINESS LOGIC TABLES - THERAPIST DOMAIN
+// ============================================================================
+
+model therapist_profiles {
+  user_id                   BigInt   @id
+  middle_name               String?
+  preferred_name            String?
+  display_name              String?
+  profile_image_url         String?
+  avatar_url                String?
+  gender                    String?  @db.VarChar(20)
+  date_of_birth             DateTime? @db.Date
+  bio                       String?
+  short_bio                 String?
+  extended_bio              String?
+  what_clients_can_expect   String?
+  my_approach_to_therapy    String?
+  timezone                  String?  @db.VarChar(100)
+  languages                 String[]
+  created_at                DateTime @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime @default(now()) @db.Timestamptz(6)
+  
+  user                      users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  @@index([timezone])
+}
+
+model therapist_credentials {
+  user_id                   BigInt   @id
+  highest_degree            String?  @db.VarChar(100)
+  institution_name          String?  @db.VarChar(255)
+  graduation_year           Int?
+  years_of_experience       Int?
+  specializations           String[]
+  clinical_specialties      Json     @default("{}")
+  therapeutic_modalities    Json     @default("{}")
+  personal_style            Json     @default("{}")
+  created_at                DateTime @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime @default(now()) @db.Timestamptz(6)
+  
+  user                      users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  @@index([specializations], type: Gin)
+}
+
+model therapist_licenses {
+  user_id                   BigInt   @id
+  license_type              String?  @db.VarChar(100)
+  license_number            String?  @db.VarChar(100)
+  license_state             String?  @db.VarChar(50)
+  license_expiry            DateTime? @db.Date
+  license_document_url      String?
+  malpractice_insurance     String?  @db.VarChar(255)
+  malpractice_document_url  String?
+  npi_number                String?  @db.VarChar(20)
+  dea_number                String?  @db.VarChar(50)
+  licensing_authority       String?  @db.VarChar(255)
+  created_at                DateTime @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime @default(now()) @db.Timestamptz(6)
+  
+  user                      users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  @@index([license_state])
+}
+
+model therapist_availability {
+  user_id                     BigInt   @id
+  session_formats             Json     @default("{}")
+  new_clients_capacity        Int?
+  max_caseload_capacity       Int?
+  client_intake_speed         String?  @db.VarChar(20)
+  emergency_same_day_capacity Boolean  @default(false)
+  weekly_schedule             Json     @default("{}")
+  session_lengths_offered     Int[]
+  preferred_scheduling_density String? @db.VarChar(20)
+  created_at                  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at                  DateTime @default(now()) @db.Timestamptz(6)
+  
+  user                        users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  @@index([session_formats], type: Gin)
+}
+
+model therapist_insurance {
+  user_id                   BigInt   @id
+  insurance_panels_accepted Json     @default("[]")
+  medicaid_acceptance       Boolean  @default(false)
+  medicare_acceptance       Boolean  @default(false)
+  self_pay_accepted         Boolean  @default(false)
+  sliding_scale             Boolean  @default(false)
+  employer_eaps             Json     @default("[]")
+  created_at                DateTime @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime @default(now()) @db.Timestamptz(6)
+  
+  user                      users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model therapist_compliance {
+  user_id                       BigInt   @id
+  background_check_status       String   @default("pending") @db.VarChar(50)
+  hipaa_training_completed      Boolean  @default(false)
+  ethics_certification          Boolean  @default(false)
+  signed_baa                    Boolean  @default(false)
+  w9_document_url               String?
+  hipaa_document_url            String?
+  ethics_document_url           String?
+  background_check_document_url String?
+  created_at                    DateTime @default(now()) @db.Timestamptz(6)
+  updated_at                    DateTime @default(now()) @db.Timestamptz(6)
+  
+  user                          users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+// ============================================================================
+// GENERAL USER BUSINESS LOGIC TABLES
+// ============================================================================
+
+model user_addresses {
+  user_id       BigInt   @id
+  address_line1 String?  @db.VarChar(255)
+  address_line2 String?  @db.VarChar(255)
+  city          String?  @db.VarChar(100)
+  state         String?  @db.VarChar(50)
+  zip_code      String?  @db.VarChar(20)
+  country       String   @default("US") @db.VarChar(50)
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime @default(now()) @db.Timestamptz(6)
+  
+  user          users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  @@index([city, state, country])
+}
+
+model user_onboarding {
+  user_id               BigInt   @id
+  onboarding_step       Int      @default(0)
+  onboarding_status     String   @default("pending") @db.VarChar(50)
+  onboarding_session_id String?
+  created_at            DateTime @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime @default(now()) @db.Timestamptz(6)
+  
+  user                  users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model user_marketing {
+  user_id            BigInt   @id
+  marketing_consent  Boolean  @default(false)
+  referral_source    String?
+  signup_source      String?  @db.VarChar(50)
+  signup_platform    String?  @db.VarChar(50)
+  signup_device_info Json?
+  created_at         DateTime @default(now()) @db.Timestamptz(6)
+  
+  user               users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model user_organization {
+  user_id         BigInt   @id
+  organization_id BigInt?
+  is_org_owner    Boolean  @default(false)
+  primary_user_id BigInt?
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+  
+  user            users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  organization    organizations? @relation(fields: [organization_id], references: [id])
+}
+
+model user_compliance {
+  user_id                 BigInt    @id
+  terms_accepted_at       DateTime? @db.Timestamptz(6)
+  terms_version           String?   @db.VarChar(20)
+  is_anonymized           Boolean   @default(false)
+  anonymized_at           DateTime? @db.Timestamptz(6)
+  anonymization_reason    String?
+  deleted_at              DateTime? @db.Timestamptz(6)
+  created_at              DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime  @default(now()) @db.Timestamptz(6)
+  
+  user                    users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+// ============================================================================
+// EXISTING TABLES (MAINTAIN COMPATIBILITY)
+// ============================================================================
+
+model appointments {
+  id                                     BigInt           @id @default(autoincrement())
+  organization_id                        BigInt?
+  therapist_id                           BigInt
+  client_id                              BigInt?
+  title                                  String?
+  start_time                             DateTime         @db.Timestamptz(6)
+  end_time                               DateTime         @db.Timestamptz(6)
+  status                                 String?          @default("scheduled")
+  type                                   String?          @default("video")
+  is_video_call                          Boolean?         @default(true)
+  video_room_name                        String?
+  video_url                              String?
+  video_provider                         String?
+  notes                                  String?
+  flagged                                Boolean?         @default(false)
+  flag_note                              String?
+  created_at                             DateTime?        @default(now()) @db.Timestamptz(6)
+  updated_at                             DateTime?        @default(now()) @db.Timestamptz(6)
+  
+  client                                 users?           @relation("appointments_client_idTousers", fields: [client_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organization                           organizations?   @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  therapist                              users            @relation("appointments_therapist_idTousers", fields: [therapist_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  clinical_notes                         clinical_notes[]
+}
+
+model auth_provider_mapping {
+  id             Int       @id @default(autoincrement())
+  user_id        BigInt
+  provider_type  String    @db.VarChar(50)
+  provider_uid   String    @db.VarChar(255)
+  provider_email String?   @db.VarChar(255)
+  is_primary     Boolean?  @default(false)
+  metadata       Json?     @default("{}")
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  
+  user           users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([provider_type, provider_uid])
+  @@unique([user_id, provider_type])
+  @@index([provider_email])
+  @@index([provider_type, provider_uid])
+  @@index([user_id])
+}
+
+model clients {
+  id                        BigInt    @id @default(autoincrement())
+  user_id                   BigInt    @unique
+  assigned_therapist_id     BigInt?
+  date_of_birth             DateTime? @db.Date
+  gender_identity           String?
+  pronouns                  String?
+  preferred_language        String?
+  marital_status            String?
+  occupation                String?
+  address_1                 String?
+  address_2                 String?
+  city                      String?
+  state                     String?
+  zip_code                  String?
+  country                   String?
+  emergency_contact_json    Json?     @default("{}")
+  has_insurance             Boolean?  @default(false)
+  insurance_data            Json?     @default("{}")
+  payment_method_id         String?
+  payment_method_type       String?
+  billing_address_json      Json?
+  billing_outstanding_balance Decimal? @default(0.00) @db.Decimal(10, 2)
+  reason_for_therapy        String?
+  presenting_concerns_data  Json?
+  intake_safety_screening_data Json?
+  medical_history           Json?     @default("{}")
+  status                    String?   @default("active")
+  safety_risk_level         String?   @default("low")
+  safety_risk_flags         String[]
+  safety_plan_url           String?
+  risk_banner_alert         String?
+  treatment_plan            Json?     @default("{}")
+  diagnoses_structured      Json?     @default("{}")
+  medications_current       Json?     @default("[]")
+  assessment_scores         Json?     @default("{}")
+  consents_signed           Json?     @default("{}")
+  signature_url             String?
+  created_at                DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime? @default(now()) @db.Timestamptz(6)
+  
+  assigned_therapist        users?    @relation("clients_assigned_therapist_idTousers", fields: [assigned_therapist_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user                      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model clinical_notes {
+  id                       BigInt         @id @default(autoincrement())
+  organization_id          BigInt?
+  client_id                BigInt
+  therapist_id             BigInt
+  appointment_id           BigInt?
+  note_type                String?
+  status                   String?        @default("draft")
+  content_structured       Json
+  diagnosis_codes          String[]
+  signed_at                DateTime?      @db.Timestamptz(6)
+  created_at               DateTime?      @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime?      @default(now()) @db.Timestamptz(6)
+  
+  appointment              appointments?  @relation(fields: [appointment_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  client                   users          @relation("clinical_notes_client_idTousers", fields: [client_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organization             organizations? @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  therapist                users          @relation("clinical_notes_therapist_idTousers", fields: [therapist_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model organizations {
+  id                                            BigInt                 @id @default(autoincrement())
+  name                                          String
+  legal_name                                    String
+  dba                                           String?
+  tax_id                                        String?
+  npi                                           String?
+  slug                                          String?                @unique
+  type                                          String?
+  primary_contact_name                          String?
+  primary_contact_email                         String?
+  primary_contact_phone                         String?
+  primary_contact_country_code                  String?                @default("+1")
+  hq_address_1                                  String?
+  hq_address_2                                  String?
+  hq_city                                       String?
+  hq_state                                      String?
+  hq_zip                                        String?
+  hq_country                                    String?                @default("US")
+  billing_address_same_as_hq                    Boolean?               @default(true)
+  billing_address_1                             String?
+  billing_address_2                             String?
+  billing_city                                  String?
+  billing_state                                 String?
+  billing_zip                                   String?
+  billing_country                               String?
+  number_of_clinicians                          Int?                   @default(1)
+  departments                                   String[]
+  divisions                                     String[]
+  hipaa_baa_signed                              Boolean?               @default(false)
+  data_processing_agreement_signed              Boolean?               @default(false)
+  audit_logging_level                           String?                @default("standard")
+  mfa_required                                  Boolean?               @default(true)
+  password_policy                               Json?                  @default("{\"minLength\": 12, \"rotationDays\": 90, \"sessionTimeoutMinutes\": 30}")
+  brand_color_primary                           String?                @default("#F97316")
+  brand_color_secondary                         String?                @default("#F59E0B")
+  logo_url                                      String?
+  email_sender_name                             String?
+  sms_sender_name                               String?
+  custom_domain                                 String?
+  custom_login_branding                         Boolean?               @default(false)
+  subscription_plan                             String?                @default("trial")
+  subscription_status                           String?                @default("active")
+  integrations_enabled                          Json?                  @default("{}")
+  created_at                                    DateTime?              @default(now()) @db.Timestamptz(6)
+  updated_at                                    DateTime?              @default(now()) @db.Timestamptz(6)
+  trial_start_date                              DateTime?              @db.Timestamptz(6)
+  trial_end_date                                DateTime?              @db.Timestamptz(6)
+  created_by_user_id                            BigInt?
+  
+  appointments                                  appointments[]
+  clinical_notes                                clinical_notes[]
+  user_organizations                            user_organization[]
+}
+
+// ============================================================================
+// SECURITY AND COMPLIANCE TABLES
+// ============================================================================
+
+model mfa_secrets {
+  id           BigInt    @id @default(autoincrement())
+  user_id      BigInt    @unique
+  secret       String
+  backup_codes String[]
+  enabled_at   DateTime? @db.Timestamptz(6)
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime? @default(now()) @db.Timestamptz(6)
+  
+  user         users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  
+  @@index([user_id])
+}
+
+model mfa_sms_codes {
+  id           BigInt    @id @default(autoincrement())
+  user_id      BigInt
+  phone_number String    @db.VarChar(20)
+  code         String    @db.VarChar(255)
+  expires_at   DateTime  @db.Timestamptz(6)
+  verified_at  DateTime? @db.Timestamptz(6)
+  purpose      String    @db.VarChar(20)
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  
+  user         users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  
+  @@index([expires_at])
+  @@index([user_id])
+}
+
+model email_verification_tokens {
+  id          BigInt    @id @default(autoincrement())
+  user_id     BigInt
+  token       String    @unique
+  expires_at  DateTime  @db.Timestamptz(6)
+  verified_at DateTime? @db.Timestamptz(6)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  
+  user        users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  
+  @@index([token])
+  @@index([user_id])
+}
+
+model password_reset_tokens {
+  id         BigInt    @id @default(autoincrement())
+  user_id    BigInt
+  token      String    @unique
+  expires_at DateTime  @db.Timestamptz(6)
+  used_at    DateTime? @db.Timestamptz(6)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  
+  user       users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  
+  @@index([token])
+  @@index([user_id])
+}
+
+model refresh_tokens {
+  id          BigInt    @id @default(autoincrement())
+  user_id     BigInt
+  token       String    @unique
+  expires_at  DateTime  @db.Timestamptz(6)
+  revoked_at  DateTime? @db.Timestamptz(6)
+  device_info Json?
+  ip_address  String?
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  
+  user        users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  
+  @@index([token])
+  @@index([user_id])
+}
+
+model user_sessions {
+  id               BigInt    @id @default(autoincrement())
+  session_id       String    @unique @db.VarChar(255)
+  user_id          BigInt
+  device_info      Json?     @default("{}")
+  ip_address       String    @db.Inet
+  user_agent       String
+  expires_at       DateTime  @db.Timestamptz(6)
+  is_active        Boolean?  @default(true)
+  remember_me      Boolean?  @default(false)
+  ended_at         DateTime? @db.Timestamptz(6)
+  end_reason       String?   @db.VarChar(50)
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  last_accessed_at DateTime? @default(now()) @db.Timestamptz(6)
+  
+  user             users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  
+  @@index([expires_at])
+  @@index([is_active])
+  @@index([last_accessed_at])
+  @@index([session_id])
+  @@index([user_id])
+}
+
+model compliance_audit_log {
+  id               BigInt    @id @default(autoincrement())
+  audit_id         String    @unique @db.VarChar(255)
+  user_id          BigInt
+  action           String    @db.VarChar(100)
+  resource_type    String    @db.VarChar(100)
+  resource_id      String?   @db.VarChar(255)
+  old_values       Json?     @default("{}")
+  new_values       Json?     @default("{}")
+  ip_address       String?   @db.Inet
+  user_agent       String?
+  compliance_level String    @db.VarChar(20)
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  
+  user             users     @relation(fields: [user_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  
+  @@index([action])
+  @@index([audit_id])
+  @@index([compliance_level])
+  @@index([created_at])
+  @@index([resource_type])
+  @@index([user_id])
+}

@@ -1,0 +1,24 @@
+{
+  "Variables": {
+    "DATABASE_URL": "postgresql://app_user:ChangeMe123!@dev-db-cluster.cluster-cliy2m6q8h4h.us-west-2.rds.amazonaws.com:5432/ataraxia_db?schema=ataraxia",
+    "DATABASE_SCHEMA": "ataraxia",
+    "NODE_ENV": "production",
+    "AUTH_PROVIDER_TYPE": "firebase",
+    "FIREBASE_PROJECT_ID": "ataraxia-c150f",
+    "FIREBASE_API_KEY": "AIzaSyCM2W8UE5gJekK2vV2d-UE5fVe3ZXzk1vQ",
+    "FIREBASE_CLIENT_EMAIL": "firebase-adminsdk-fbsvc@ataraxia-c150f.iam.gserviceaccount.com",
+    "FIREBASE_PRIVATE_KEY": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC833iC3BPVqyYP\nT9JkeYRXQV1bWOqi/SIFXImz08vl9CVVqvEDpL8fnHG2BiZ4gx+O+2Xk4DNb7Qan\nF8ZbYdkJZIw9vqjpLalW5GWAeX7U0FVYrSb0sBXxlv3ElLh6PsUCVegPfRzZDklf\n0s7l/ZWrcwd2WoRMf/24QQXJyhd7MmKdrX3KG+HfK+oA6ISBUZf54ocUCWAMO0If\n9Bqf4BESdeSZSY85PIKi3EvaqVyo+LYBF4cQOdksBFcFH1Jark0jDR0EHoARQAPt\n3/AnbqIJHJVJ7p+yLZ8FGFrbr/+IJg1Xjb8QlyAkcAoy5mSBCnrXeAnRYyec5Caz\n+i9RgRXPAgMBAAECggEAB6emVTtr4bWRkdOiNdNHqK0BW8yYmemDgaR0qkv+ZWqw\nlq5vx+jbRtc1iUiU3OkyPr50Ae46S/1TzzLjUFyAtOTqhYLJisXV1AE8Fz8VWQpm\njcpaxquvqqkmzjBZjQ7SjPEuuhilMiuQ5WgrCDRFEXv/L0NPkwrUSC2jzpVjv+jt\nikndAaTyM8MCk0cdlvYqMwYEdy9woS7gIb+bfMxxGigglB967tZzSbPfMuVRVhNA\nB0kJCkv9QjYWZWe4/2EBctmuRrHN7ulFHNJkBjad+5Avb26gwN4vvLeC7IJD4IK6\nmn8ZFQXW8vvjq7TLcR/rp/4vqyeDF1KRKqPkuXblGQKBgQDhQF6Ypp/IuLUpQYW0\n2H92vXhfI3z1ZK8iCbMicaZwYj7f9HTUO57SHRg+IPiLZnGR+osyeGh8J8bFEW4o\nw66bmwp9KX6nl6Ez7DX/LDBRvPHt9PkitVahRZ+HMk0rdp4yhkOcx4d1SvnTjcKo\nNRAhDR7gKMdXZ47cJi4QRkdcmQKBgQDWp9GfGiP5V07NonxhbQ6bx8podlUUm5yj\n37pmo/m81nSZF6U53BZP+9TVSRHVSTfLWmBJJ/dxp5IFNNlk6u3QzeOT+q3K0QyS\nBpAUCZcf4a7nCyBLg2QxbsdEInPdzvA06R/EfxsCv52Rz5T/0YJIc1EVWp7HBSDQ\nSud5VT/epwKBgQCfUptWV8z++X7SHpFHODb4Ms34ZS6Wl8+0QK4e98olBai5Wbxk\n/YK51XB3SXTjjONZwKBCY55r6uqSK2ECnl5bm89QdlAqlHqmMjaDNas7tWxdxn+N\niDwtOAS9aNvimTUOQZ+DPjJWyWBpvYRo25d7+T7UiKNu9EW8+5hrVHpXSQKBgFlh\nbba7MsmLYkPb6cDDoXaaXZzb0ReQqEvQSBSfKMlJ3yk0IFeUXjIV4YyiLWvLXhEt\n47PykWVg6juCwxbzf+0XHjErC5zNKVfQpcPCLoxW8/Y+usbWwiyXPSAQ3IA6v+i4\nPcMbTgr58MmbTyaqfX5fjh6/Kigi6YPx/KqYJc03AoGATgUBJLiuCe03Ubg9mDDS\nY0rbzrPSRehw3icv2FgYyl1+JYT7ofMac+0ByA83qXXl5WWr/4UV5Q9LVyhk0SQ1\n4B41wglpahNzTcu+KIbanF0raRfK/Y7VWGFm9WISrRNPbNYfqwQ9/+pMZHBR0Wrt\nh+8j+QR+wuIJw/XK/T5y6JI=\n-----END PRIVATE KEY-----",
+    "COGNITO_REGION": "us-west-2",
+    "COGNITO_CLIENT_ID": "7ek8kg1td2ps985r21m7727q98",
+    "COGNITO_USER_POOL_ID": "us-west-2_xeXlyFBMH",
+    "LOG_LEVEL": "error",
+    "ENABLE_UNIVERSAL_AUTH": "true",
+    "JWT_SECRET": "prod_jwt_secret_key_secure_2024",
+    "SESSION_TIMEOUT_MINUTES": "30",
+    "REFRESH_TOKEN_EXPIRY_DAYS": "7",
+    "ENABLE_MFA": "true",
+    "PASSWORD_MIN_LENGTH": "12",
+    "ENABLE_DETAILED_ERRORS": "false",
+    "ENABLE_STACK_TRACES": "false"
+  }
+}

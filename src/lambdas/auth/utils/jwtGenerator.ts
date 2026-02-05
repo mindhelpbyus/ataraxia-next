@@ -13,8 +13,11 @@ export const generateToken = (user_id: number, email: string, role: string) => {
         }
     };
 
-    // Allow customizing secret via env, default to a dev secret
-    const secret = process.env.JWT_SECRET || 'dev_secret_key_change_in_prod';
+    // Require JWT_SECRET from environment
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error('JWT_SECRET environment variable is required');
+    }
 
     // Token valid for 1 hour by default
     return jwt.sign(payload, secret, { expiresIn: '1h' });

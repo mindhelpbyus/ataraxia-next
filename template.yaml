@@ -29,6 +29,24 @@ Globals:
         COGNITO_USER_POOL_ID: !Ref AtaraxiaCognitoUserPool
         COGNITO_CLIENT_ID: !Ref AtaraxiaCognitoUserPoolClient
         COGNITO_REGION: !Ref AWS::Region
+        # Firebase configuration
+        FIREBASE_PROJECT_ID: "ataraxia-therapy-prod"
+        FIREBASE_CLIENT_EMAIL: "firebase-adminsdk@ataraxia-therapy-prod.iam.gserviceaccount.com"
+        FIREBASE_PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...\n-----END PRIVATE KEY-----\n"
+        FIREBASE_API_KEY: "AIzaSyC..."
+        # SMS Configuration
+        AWS_SNS_REGION: !Ref AWS::Region
+        SMS_SENDER_ID: "Ataraxia"
+        # Profile completion
+        PROFILE_COMPLETION_BASE_URL: "https://app.ataraxia.com/complete-profile"
+        # Security settings
+        ENABLE_MFA: "true"
+        PASSWORD_MIN_LENGTH: "12"
+        SESSION_TIMEOUT_MINUTES: "30"
+        REFRESH_TOKEN_EXPIRY_DAYS: "7"
+        # Feature flags
+        ENABLE_UNIVERSAL_AUTH: "true"
+        ENABLE_DETAILED_ERRORS: "false"
   
   Api:
     Cors:
@@ -225,6 +243,31 @@ Resources:
             RestApiId: !Ref AtaraxiaApi
             Path: /api/auth/{proxy+}
             Method: OPTIONS
+        # Mobile registration endpoints
+        MobileRegister:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/auth/mobile/register
+            Method: POST
+        MobileSendPhoneCode:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/auth/mobile/send-phone-code
+            Method: POST
+        MobileVerifyPhone:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/auth/mobile/verify-phone
+            Method: POST
+        MobileCompleteProfile:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/auth/mobile/complete-profile
+            Method: POST
 
   # RBAC Lambda Function
   RBACFunction:
@@ -410,6 +453,37 @@ Resources:
             RestApiId: !Ref AtaraxiaApi
             Path: /api/client/{proxy+}
             Method: OPTIONS
+        # Mobile client endpoints
+        ClientTherapists:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/client/therapists
+            Method: GET
+        ClientSearch:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/client/search
+            Method: GET
+        ClientSessions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/client/sessions
+            Method: GET
+        ClientPayments:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/client/payments
+            Method: GET
+        ClientBookAppointment:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AtaraxiaApi
+            Path: /api/client/book-appointment
+            Method: POST
 
   # Verification Lambda Function
   VerificationFunction:
